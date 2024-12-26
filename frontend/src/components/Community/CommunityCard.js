@@ -14,7 +14,7 @@ import { Group as GroupIcon } from '@mui/icons-material';
 const CommunityCard = ({ community }) => {
     return (
         <Card sx={{ mb: 2, width: '100%' }}>
-            <CardActionArea component={Link} to={`/community/${community._id}`}>
+            <CardActionArea component={Link} to={`/b/${community.name.toLowerCase().replace(/\s+/g, '')}`}>
                 <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <Avatar 

@@ -20,8 +20,10 @@ const createCommunity = async (req, res) => {
             console.log('Banner image saved:', bannerImage);
         }
 
+        const communityName = name.toLowerCase().replace(/\s+/g, ''); // Remove spaces
+
         const community = new Community({
-            name: name.toLowerCase(),
+            name: communityName,
             description,
             isPrivate: isPrivate === 'true',
             bannerImage,
