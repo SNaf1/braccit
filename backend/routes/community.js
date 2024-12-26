@@ -18,7 +18,10 @@ router.post('/:name/cancel-join', protect, communityController.cancelJoinRequest
 router.post('/:name/leave', protect, communityController.leaveCommunity);
 router.post('/:name/remove-member', protect, communityController.removeMember);
 router.post('/:name/admin', protect, communityController.addAdmin);
+router.post('/:name/remove-admin', protect, communityController.removeAdmin); // Add this line
 router.put('/:name', protect, upload.single('bannerImage'), communityController.updateCommunity);
+router.delete('/:name', protect, communityController.deleteCommunity);
+router.post('/:name/admin', protect, communityController.addAdmin);
 
 // Post routes within community
 router.post('/:communityName/posts', protect, upload.array('images', 5), postController.createPost);

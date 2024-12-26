@@ -1,59 +1,68 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const communitySchema = new mongoose.Schema({
+const communitySchema = new mongoose.Schema(
+  {
     name: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
-        lowercase: true
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
     },
     description: {
-        type: String,
-        required: true,
-        trim: true,
-        maxLength: 500
+      type: String,
+      required: true,
+      trim: true,
+      maxLength: 500,
     },
     bannerImage: {
-        type: String,  // URL to the banner image
-        default: ''
+      type: String, // URL to the banner image
+      default: "",
     },
     isPrivate: {
-        type: Boolean,
-        default: false
+      type: Boolean,
+      default: false,
     },
     owner: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
-    admins: [{
+    admins: [
+      {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-    }],
-    members: [{
+        ref: "User",
+      },
+    ],
+    members: [
+      {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-    }],
-    pendingMembers: [{
+        ref: "User",
+      },
+    ],
+    pendingMembers: [
+      {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-    }],
+        ref: "User",
+      },
+    ],
     createdAt: {
-        type: Date,
-        default: Date.now
+      type: Date,
+      default: Date.now,
     },
     memberCount: {
-        type: Number,
-        default: 0
-    }
-}, {
-    timestamps: true
-});
+      type: Number,
+      default: 0,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
 
 // Add text index for search functionality
-communitySchema.index({ name: 'text', description: 'text' });
+communitySchema.index({ name: "text", description: "text" });
 
-const Community = mongoose.model('Community', communitySchema);
+const Community = mongoose.model("Community", communitySchema);
 
 module.exports = Community;
