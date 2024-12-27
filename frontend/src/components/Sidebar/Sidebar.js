@@ -15,6 +15,7 @@ import {
   Public as PublicIcon,
   Lock as LockIcon,
   PostAdd as PostAddIcon,
+  School as SchoolIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from '../../utils/axios';
@@ -95,6 +96,27 @@ const Sidebar = () => {
             Create Community
           </Button>
         </ListItem>
+
+        {user && (
+          <ListItem sx={{ mt: 1 }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              color="primary"
+              startIcon={<SchoolIcon />}
+              onClick={() => navigate('/courses')}
+              sx={{ 
+                color: 'white',
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                '&:hover': {
+                  borderColor: 'white'
+                }
+              }}
+            >
+              My Courses
+            </Button>
+          </ListItem>
+        )}
 
         <Divider sx={{ my: 2, borderColor: 'rgba(255, 255, 255, 0.12)' }} />
 

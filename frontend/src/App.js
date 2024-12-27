@@ -13,6 +13,7 @@ import PostDetail from './components/Post/PostDetail';
 import SearchResults from './pages/SearchResults';
 import NotFound from './components/NotFound';
 import Home from './pages/Home';
+import Courses from './pages/Courses';
 import { AuthProvider } from './contexts/AuthContext';
 
 const darkTheme = createTheme({
@@ -76,6 +77,7 @@ function App() {
                   <Route path="/create-post" element={<CreatePost />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/search" element={<SearchResults />} />
+                  <Route path="/courses" element={<Courses />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Box>

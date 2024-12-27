@@ -46,6 +46,25 @@ const userSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Community'
     }],
+    completedCourses: [{
+        course: {
+            type: String,
+            ref: 'Course'
+        },
+        completedAt: {
+            type: Date,
+            default: Date.now
+        },
+        grade: {
+            type: String,
+            enum: ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'F'],
+            required: true
+        }
+    }],
+    currentCourses: [{
+        type: String,
+        ref: 'Course'
+    }],
     isEmailVerified: {
         type: Boolean,
         default: false
