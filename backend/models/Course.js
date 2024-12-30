@@ -1,5 +1,11 @@
 const mongoose = require('mongoose');
 
+const scheduleSchema = new mongoose.Schema({
+    day: String,
+    time: String,
+    room: String
+}, { _id: false });
+
 const courseSchema = new mongoose.Schema({
     code: {
         type: String,
@@ -24,7 +30,7 @@ const courseSchema = new mongoose.Schema({
         min: 0
     },
     prerequisites: [{
-        type: String,  // Course codes
+        type: String,
         ref: 'Course'
     }],
     semester: {
@@ -40,13 +46,37 @@ const courseSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
+    },
+    // BRAC University specific fields
+    schedules: [scheduleSchema],
+    labSchedules: [scheduleSchema],
+    instructor: {
+        type: String,
+        trim: true
+    },
+    capacity: {
+        type: Number,
+        min: 0
+    },
+    availableSeats: {
+        type: Number,
+        min: 0
+    },
+    sectionDetails: {
+        type: String,
+        trim: true
     }
 }, {
     timestamps: true
 });
 
 // Add text index for search functionality
-courseSchema.index({ code: 'text', name: 'text', description: 'text' });
+courseSchema.index({ 
+    code: 'text', 
+    name: 'text', 
+    description: 'text',
+    department: 'text'
+});
 
 const Course = mongoose.model('Course', courseSchema);
 
