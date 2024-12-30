@@ -114,6 +114,9 @@ router.get('/verify', protect, (req, res) => {
     res.status(200).json({ valid: true });
 });
 
+// Verify email route
+router.get('/verify-email/:token', authController.verifyEmail);
+
 // Logout route
 router.post('/logout', protect, authController.logout);
 

@@ -84,9 +84,9 @@ const Transition = React.forwardRef(function Transition(props, ref) {
     return <Slide direction="up" ref={ref} {...props} />;
 });
 
-const AuthModal = ({ open, onClose }) => {
+const AuthModal = () => {
+    const { isLoginModalOpen, closeLoginModal, login, register, error: authError, setError, authLoading } = useAuth();
     const [isLogin, setIsLogin] = useState(true);
-    const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         username: '',
         email: '',
@@ -94,12 +94,13 @@ const AuthModal = ({ open, onClose }) => {
         confirmPassword: ''
     });
     const [localError, setLocalError] = useState('');
-    const { login, register, error: authError, setError, authLoading } = useAuth();
+    const [successMessage, setSuccessMessage] = useState('');
 
-    // Clear errors when switching modes
+    // Clear errors and success message when switching modes
     useEffect(() => {
         setLocalError('');
         setError(null);
+        setSuccessMessage('');
     }, [isLogin, setError]);
 
     // Display either local validation error or auth error
@@ -128,197 +129,193 @@ const AuthModal = ({ open, onClose }) => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
         if (!validateForm()) return;
 
-        setIsLoading(true);
-        setLocalError('');
-        setError(null);
+        setSuccessMessage('');
         
         try {
-            let success;
             if (isLogin) {
-                success = await login(formData.username, formData.password);
+                const success = await login(formData.username, formData.password);
+                // Only close modal on successful login
+                if (success) {
+                    closeLoginModal();
+                }
             } else {
-                if (!formData.email.trim()) {
-                    setLocalError('Email is required');
-                    setIsLoading(false);
-                    return;
+                const response = await register(formData.username, formData.email, formData.password);
+                if (response && response.requiresVerification) {
+                    setSuccessMessage('Registration successful! Please check your email to verify your account before logging in.');
+                    setFormData({
+                        username: '',
+                        email: '',
+                        password: '',
+                        confirmPassword: ''
+                    });
+                    // Don't close modal, but switch to login view after a delay
+                    setTimeout(() => {
+                        setIsLogin(true);
+                    }, 3000);
                 }
-                // Basic email validation
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(formData.email)) {
-                    setLocalError('Please enter a valid email address');
-                    setIsLoading(false);
-                    return;
-                }
-                if (formData.password.length < 6) {
-                    setLocalError('Password must be at least 6 characters long');
-                    setIsLoading(false);
-                    return;
-                }
-                success = await register(formData.username, formData.email, formData.password);
             }
-            
-            if (success) {
-                handleClose();
-            }
-        } catch (err) {
-            console.error('Auth error:', err);
-        } finally {
-            setIsLoading(false);
+        } catch (error) {
+            console.error('Auth error:', error);
+            // Don't close modal on error
+            setLocalError(error.message || 'An error occurred');
         }
     };
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-        setLocalError('');
-        setError(null);
-    };
-
     const handleClose = () => {
+        closeLoginModal();
+        // Reset form state
         setFormData({
             username: '',
             email: '',
             password: '',
             confirmPassword: ''
         });
+        setIsLogin(true);
         setLocalError('');
         setError(null);
-        onClose();
-    };
-
-    const toggleMode = () => {
-        setIsLogin(!isLogin);
-        setFormData({
-            username: '',
-            email: '',
-            password: '',
-            confirmPassword: ''
-        });
-        setLocalError('');
-        setError(null);
+        setSuccessMessage('');
     };
 
     return (
         <StyledDialog
-            open={open}
-            TransitionComponent={Transition}
-            keepMounted
+            open={isLoginModalOpen}
             onClose={handleClose}
-            aria-describedby="auth-dialog"
+            TransitionComponent={Transition}
+            maxWidth="sm"
+            fullWidth
         >
-            <Box sx={{ position: 'relative', p: 3, minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
-                <IconButton
-                    aria-label="close"
-                    onClick={handleClose}
-                    sx={{
-                        position: 'absolute',
-                        right: 8,
-                        top: 8,
-                        color: 'grey.500',
-                    }}
-                >
-                    <CloseIcon />
-                </IconButton>
+            <DialogContent>
+                <Box sx={{ position: 'relative' }}>
+                    <IconButton
+                        onClick={handleClose}
+                        sx={{
+                            position: 'absolute',
+                            right: 0,
+                            top: 0,
+                            color: 'grey.500'
+                        }}
+                    >
+                        <CloseIcon />
+                    </IconButton>
 
-                <Typography variant="h5" component="h2" gutterBottom align="center" sx={{ mb: 3, fontWeight: 600 }}>
-                    {isLogin ? 'Welcome Back!' : 'Create Account'}
-                </Typography>
-
-                <form onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <StyledTextField
-                            fullWidth
-                            name="username"
-                            label="Username"
-                            value={formData.username}
-                            onChange={handleInputChange}
-                            InputProps={{
-                                startAdornment: <PersonIcon sx={{ mr: 1, color: 'action.active' }} />
-                            }}
-                        />
-
-                        {!isLogin && (
-                            <Fade in={!isLogin}>
-                                <StyledTextField
-                                    fullWidth
-                                    name="email"
-                                    label="Email"
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={handleInputChange}
-                                    InputProps={{
-                                        startAdornment: <EmailIcon sx={{ mr: 1, color: 'action.active' }} />
-                                    }}
-                                />
-                            </Fade>
-                        )}
-
-                        <StyledTextField
-                            fullWidth
-                            name="password"
-                            label="Password"
-                            type="password"
-                            value={formData.password}
-                            onChange={handleInputChange}
-                            InputProps={{
-                                startAdornment: <LockIcon sx={{ mr: 1, color: 'action.active' }} />
-                            }}
-                        />
-
-                        {!isLogin && (
-                            <Fade in={!isLogin}>
-                                <StyledTextField
-                                    fullWidth
-                                    name="confirmPassword"
-                                    label="Confirm Password"
-                                    type="password"
-                                    value={formData.confirmPassword}
-                                    onChange={handleInputChange}
-                                    InputProps={{
-                                        startAdornment: <LockIcon sx={{ mr: 1, color: 'action.active' }} />
-                                    }}
-                                />
-                            </Fade>
-                        )}
+                    <Box 
+                        component="form" 
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleSubmit();
+                        }}
+                        noValidate
+                        sx={{ mt: 2 }}
+                    >
+                        <Typography variant="h5" sx={{ mb: 3, textAlign: 'center' }}>
+                            {isLogin ? 'Welcome Back!' : 'Create Account'}
+                        </Typography>
 
                         {displayError && (
-                            <Alert severity="error" sx={{ mt: 1 }}>
-                                {displayError}
-                            </Alert>
+                            <Fade in={!!displayError}>
+                                <Alert severity="error" sx={{ mb: 2 }}>
+                                    {displayError}
+                                </Alert>
+                            </Fade>
                         )}
 
-                        <Box sx={{ mt: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <StyledButton
+                        {successMessage && (
+                            <Fade in={!!successMessage}>
+                                <Alert severity="success" sx={{ mb: 2 }}>
+                                    {successMessage}
+                                </Alert>
+                            </Fade>
+                        )}
+
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <StyledTextField
                                 fullWidth
-                                variant="contained"
-                                color="primary"
-                                type="submit"
-                                disabled={isLoading}
-                            >
-                                {isLoading ? (
-                                    <CircularProgress size={24} color="inherit" />
-                                ) : (
-                                    isLogin ? 'Sign In' : 'Create Account'
-                                )}
-                            </StyledButton>
+                                label="Username"
+                                name="username"
+                                value={formData.username}
+                                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                InputProps={{
+                                    startAdornment: <PersonIcon sx={{ mr: 1, color: 'grey.500' }} />
+                                }}
+                            />
+
+                            {!isLogin && (
+                                <StyledTextField
+                                    fullWidth
+                                    label="Email"
+                                    name="email"
+                                    type="email"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    InputProps={{
+                                        startAdornment: <EmailIcon sx={{ mr: 1, color: 'grey.500' }} />
+                                    }}
+                                />
+                            )}
+
+                            <StyledTextField
+                                fullWidth
+                                label="Password"
+                                name="password"
+                                type="password"
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                InputProps={{
+                                    startAdornment: <LockIcon sx={{ mr: 1, color: 'grey.500' }} />
+                                }}
+                            />
+
+                            {!isLogin && (
+                                <StyledTextField
+                                    fullWidth
+                                    label="Confirm Password"
+                                    name="confirmPassword"
+                                    type="password"
+                                    value={formData.confirmPassword}
+                                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                    InputProps={{
+                                        startAdornment: <LockIcon sx={{ mr: 1, color: 'grey.500' }} />
+                                    }}
+                                />
+                            )}
 
                             <Button
-                                color="primary"
-                                onClick={toggleMode}
-                                sx={{ textTransform: 'none' }}
+                                type="submit"
+                                variant="contained"
+                                fullWidth
+                                disabled={authLoading}
+                                sx={{ mt: 2 }}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleSubmit();
+                                }}
                             >
-                                {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
+                                {authLoading ? (
+                                    <CircularProgress size={24} color="inherit" />
+                                ) : (
+                                    isLogin ? 'Login' : 'Register'
+                                )}
+                            </Button>
+
+                            <Button
+                                onClick={() => setIsLogin(!isLogin)}
+                                sx={{ mt: 1 }}
+                            >
+                                {isLogin ? "Don't have an account? Register" : 'Already have an account? Login'}
                             </Button>
                         </Box>
                     </Box>
-                </form>
-            </Box>
+                </Box>
+            </DialogContent>
         </StyledDialog>
     );
 };

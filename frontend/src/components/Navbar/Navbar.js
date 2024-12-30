@@ -58,18 +58,9 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 }));
 
 const Navbar = () => {
-  const { user, loading } = useAuth();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { user, loading, isLoginModalOpen, openLoginModal, closeLoginModal } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
-
-  const handleAuthModalOpen = () => {
-    setIsAuthModalOpen(true);
-  };
-
-  const handleAuthModalClose = () => {
-    setIsAuthModalOpen(false);
-  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -99,54 +90,56 @@ const Navbar = () => {
           sx={{
             textDecoration: 'none',
             color: 'inherit',
+            flexGrow: 0,
             display: { xs: 'none', sm: 'block' }
           }}
         >
           Braccit
         </Typography>
 
-        <Box component="form" onSubmit={handleSearch} sx={{ flexGrow: 1, ml: 2, maxWidth: '400px' }}>
+        <form onSubmit={handleSearch} style={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
           <Search>
             <SearchIconWrapper>
               <SearchIcon />
             </SearchIconWrapper>
             <StyledInputBase
-              placeholder="Search communities and posts..."
+              placeholder="Search..."
               inputProps={{ 'aria-label': 'search' }}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </Search>
-        </Box>
+        </form>
 
-        <Box sx={{ flexGrow: 1 }} />
-
-        {loading ? (
-          <CircularProgress size={24} color="inherit" />
-        ) : user ? (
-          <>
+        <Box sx={{ flexGrow: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
+          {user ? (
+            <>
+              <Button
+                component={Link}
+                to="/create-post"
+                variant="contained"
+                color="secondary"
+                startIcon={<AddIcon />}
+                sx={{ display: { xs: 'none', sm: 'flex' } }}
+              >
+                Create Post
+              </Button>
+              <UserDropdown />
+            </>
+          ) : loading ? (
+            <CircularProgress size={24} color="inherit" />
+          ) : (
             <Button
-              component={Link}
-              to="/create-community"
               color="inherit"
-              startIcon={<AddIcon />}
-              sx={{ mr: 2 }}
+              onClick={openLoginModal}
+              sx={{ whiteSpace: 'nowrap' }}
             >
-              Create Community
+              Login / Register
             </Button>
-            <UserDropdown />
-          </>
-        ) : (
-          <Button color="inherit" onClick={handleAuthModalOpen}>
-            Login / Register
-          </Button>
-        )}
+          )}
+        </Box>
       </Toolbar>
-
-      <AuthModal
-        open={isAuthModalOpen}
-        onClose={handleAuthModalClose}
-      />
+      <AuthModal open={isLoginModalOpen} onClose={closeLoginModal} />
     </AppBar>
   );
 };

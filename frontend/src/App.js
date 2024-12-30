@@ -14,6 +14,7 @@ import SearchResults from './pages/SearchResults';
 import NotFound from './components/NotFound';
 import Home from './pages/Home';
 import { AuthProvider } from './contexts/AuthContext';
+import VerifyEmail from './components/Auth/VerifyEmail';
 
 const darkTheme = createTheme({
   palette: {
@@ -76,6 +77,7 @@ function App() {
                   <Route path="/create-post" element={<CreatePost />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/search" element={<SearchResults />} />
+                  <Route path="/verify-email/:token" element={<VerifyEmail />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Box>

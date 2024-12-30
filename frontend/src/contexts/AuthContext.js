@@ -8,6 +8,7 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [authLoading, setAuthLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
     useEffect(() => {
         const initAuth = async () => {
@@ -36,19 +37,36 @@ export const AuthProvider = ({ children }) => {
         initAuth();
     }, []);
 
+    const openLoginModal = () => {
+        setIsLoginModalOpen(true);
+    };
+
+    const closeLoginModal = () => {
+        setIsLoginModalOpen(false);
+    };
+
     const login = async (username, password) => {
         setAuthLoading(true);
         setError(null);
         try {
             const response = await axios.post('/api/auth/login', { username, password });
+            
+            // Check if the user needs to verify their email
+            if (response.data.needsVerification) {
+                setError('Please verify your email before logging in');
+                return false;
+            }
+
+            // Only proceed with login if email is verified
             const { token, user: userData } = response.data;
             localStorage.setItem('token', token);
             localStorage.setItem('user', JSON.stringify(userData));
             setUser(userData);
+            closeLoginModal();
             return true;
         } catch (err) {
             console.error('Login error:', err.response?.data);
-            setError(err.response?.data?.error || 'Invalid username or password');
+            setError(err.response?.data?.error || 'Login failed. Please try again.');
             return false;
         } finally {
             setAuthLoading(false);
@@ -60,11 +78,10 @@ export const AuthProvider = ({ children }) => {
         setError(null);
         try {
             const response = await axios.post('/api/auth/register', { username, email, password });
-            const { token, user: userData } = response.data;
-            localStorage.setItem('token', token);
-            localStorage.setItem('user', JSON.stringify(userData));
-            setUser(userData);
-            return true;
+            if (response.data.requiresVerification) {
+                return response.data; // Return the response data for handling in the modal
+            }
+            return false;
         } catch (err) {
             console.error('Registration error:', err.response?.data);
             setError(err.response?.data?.error || 'Registration failed. Please try again.');
@@ -96,7 +113,10 @@ export const AuthProvider = ({ children }) => {
         loading,
         authLoading,
         error,
-        setError
+        setError,
+        isLoginModalOpen,
+        openLoginModal,
+        closeLoginModal
     };
 
     return (

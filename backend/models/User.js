@@ -26,26 +26,6 @@ const userSchema = new mongoose.Schema({
         minlength: [6, 'Password must be at least 6 characters long'],
         select: false // Don't include password in queries by default
     },
-    profilePicture: {
-        type: String,
-        default: 'default-avatar.png'
-    },
-    name: {
-        type: String,
-        trim: true
-    },
-    age: {
-        type: Number,
-        min: [13, 'You must be at least 13 years old to use this platform']
-    },
-    bio: {
-        type: String,
-        maxlength: [500, 'Bio cannot exceed 500 characters']
-    },
-    joinedCommunities: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Community'
-    }],
     isEmailVerified: {
         type: Boolean,
         default: false
@@ -54,15 +34,17 @@ const userSchema = new mongoose.Schema({
     emailVerificationExpire: Date,
     resetPasswordToken: String,
     resetPasswordExpire: Date,
+    profilePicture: {
+        type: String,
+        default: 'default-profile.png'
+    },
+    joinedCommunities: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Community'
+    }],
     loginAttempts: {
         type: Number,
         default: 0
-    },
-    lockUntil: {
-        type: Date
-    },
-    lastLogin: {
-        type: Date
     },
     createdAt: {
         type: Date,
@@ -95,45 +77,6 @@ userSchema.methods.matchPassword = async function(enteredPassword) {
     }
 };
 
-// Check if account is locked
-userSchema.methods.isLocked = function() {
-    return !!(this.lockUntil && this.lockUntil > Date.now());
-};
-
-// Increment login attempts
-userSchema.methods.incrementLoginAttempts = async function() {
-    // Reset attempts if lock has expired
-    if (this.lockUntil && this.lockUntil < Date.now()) {
-        await this.updateOne({
-            $set: {
-                loginAttempts: 1,
-                lockUntil: null
-            }
-        });
-        return;
-    }
-    // Otherwise increment
-    const updates = { $inc: { loginAttempts: 1 } };
-    // Lock the account if we've reached max attempts
-    if (this.loginAttempts + 1 >= 5) {
-        updates.$set = {
-            lockUntil: Date.now() + 15 * 60 * 1000 // Lock for 15 minutes
-        };
-    }
-    await this.updateOne(updates);
-};
-
-// Reset login attempts
-userSchema.methods.resetLoginAttempts = async function() {
-    await this.updateOne({
-        $set: {
-            loginAttempts: 0,
-            lockUntil: null,
-            lastLogin: Date.now()
-        }
-    });
-};
-
 // Generate verification token
 userSchema.methods.generateVerificationToken = function() {
     const verificationToken = crypto.randomBytes(32).toString('hex');
@@ -146,20 +89,6 @@ userSchema.methods.generateVerificationToken = function() {
     this.emailVerificationExpire = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
     
     return verificationToken;
-};
-
-// Generate password reset token
-userSchema.methods.generateResetToken = function() {
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    
-    this.resetPasswordToken = crypto
-        .createHash('sha256')
-        .update(resetToken)
-        .digest('hex');
-        
-    this.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
-    
-    return resetToken;
 };
 
 const User = mongoose.model('User', userSchema);
