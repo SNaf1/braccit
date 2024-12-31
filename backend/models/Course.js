@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const { courseTypes } = require('../data/prerequisites');
+const { getCourseCredits, isRequiredCourse } = require('../data/degreePlan');
 
 const scheduleSchema = new mongoose.Schema({
     day: String,
@@ -21,33 +23,41 @@ const courseSchema = new mongoose.Schema({
     },
     description: {
         type: String,
-        required: true,
         trim: true
     },
     credits: {
         type: Number,
         required: true,
+        default: function() {
+            return getCourseCredits(this.code);
+        },
         min: 0
     },
-    prerequisites: [{
-        type: String,
-        ref: 'Course'
-    }],
     semester: {
         type: Number,
         required: true,
         min: 1
     },
-    department: {
+    type: {
         type: String,
-        required: true,
-        trim: true
+        enum: Object.values(courseTypes),
+        required: true
     },
-    isActive: {
+    isRequired: {
         type: Boolean,
-        default: true
+        default: function() {
+            return isRequiredCourse(this.code);
+        }
     },
-    // BRAC University specific fields
+    availableSeats: {
+        type: Number,
+        default: 40,
+        min: 0
+    },
+    faculty: [{
+        type: String,
+        trim: true
+    }],
     schedules: [scheduleSchema],
     labSchedules: [scheduleSchema],
     instructor: {
@@ -58,19 +68,32 @@ const courseSchema = new mongoose.Schema({
         type: Number,
         min: 0
     },
-    availableSeats: {
-        type: Number,
-        min: 0
-    },
     sectionDetails: {
         type: String,
         trim: true
-    }
+    },
+    department: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    isActive: {
+        type: Boolean,
+        default: true
+    },
+    prerequisites: [{
+        type: String,
+        ref: 'Course'
+    }]
 }, {
     timestamps: true
 });
 
-// Add text index for search functionality
+// Add index for efficient queries
+courseSchema.index({ code: 1 });
+courseSchema.index({ semester: 1 });
+courseSchema.index({ type: 1 });
+courseSchema.index({ isActive: 1 });
 courseSchema.index({ 
     code: 'text', 
     name: 'text', 

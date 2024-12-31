@@ -5,8 +5,7 @@ const User = require('../models/User');
 const Course = require('../models/Course');
 const {
     getCourseSuggestions,
-    getAllCourses,
-    addCourse,
+    getDegreeProgress,
     updateCompletedCourses,
     updateCurrentCourses
 } = require('../controllers/courseController');
@@ -21,7 +20,8 @@ router.use((req, res, next) => {
 router.get('/', async (req, res) => {
     console.log('Getting all courses');
     try {
-        await getAllCourses(req, res);
+        const courses = await Course.find({ isActive: true });
+        res.json(courses);
     } catch (error) {
         console.error('Error in get all courses route:', error);
         res.status(500).json({ 
@@ -45,12 +45,15 @@ router.get('/suggestions', protect, async (req, res) => {
     }
 });
 
+// Get degree progress for the logged-in student
+router.get('/progress', protect, getDegreeProgress);
+
 // Get user's courses
 router.get('/my-courses', protect, async (req, res) => {
     console.log('Getting courses for user:', req.user?._id);
     try {
         const user = await User.findById(req.user._id)
-            .populate('completedCourses.course')
+            .populate('completedCourses')
             .populate('currentCourses');
             
         if (!user) {
@@ -58,13 +61,13 @@ router.get('/my-courses', protect, async (req, res) => {
         }
 
         res.json({
-            completedCourses: user.completedCourses,
-            currentCourses: user.currentCourses
+            completedCourses: user.completedCourses || [],
+            currentCourses: user.currentCourses || []
         });
     } catch (error) {
-        console.error('Error getting user courses:', error);
+        console.error('Error in get user courses route:', error);
         res.status(500).json({ 
-            error: 'Error getting user courses',
+            error: 'Internal server error in get user courses',
             details: error.message 
         });
     }
@@ -85,31 +88,9 @@ router.post('/', protect, async (req, res) => {
 });
 
 // Update completed courses for a student
-router.post('/completed', protect, async (req, res) => {
-    console.log('Updating completed courses for user:', req.user?._id);
-    try {
-        await updateCompletedCourses(req, res);
-    } catch (error) {
-        console.error('Error in update completed courses route:', error);
-        res.status(500).json({ 
-            error: 'Internal server error in update completed courses',
-            details: error.message 
-        });
-    }
-});
+router.put('/completed', protect, updateCompletedCourses);
 
 // Update current courses for a student
-router.post('/current', protect, async (req, res) => {
-    console.log('Updating current courses for user:', req.user?._id);
-    try {
-        await updateCurrentCourses(req, res);
-    } catch (error) {
-        console.error('Error in update current courses route:', error);
-        res.status(500).json({ 
-            error: 'Internal server error in update current courses',
-            details: error.message 
-        });
-    }
-});
+router.put('/current', protect, updateCurrentCourses);
 
 module.exports = router;

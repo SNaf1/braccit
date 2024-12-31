@@ -10,12 +10,13 @@ import {
     Alert,
     Paper,
     Divider,
-    Button
+    Button,
+    Stack
 } from '@mui/material';
 import axios from '../../utils/axios';
 
 const CourseSuggestions = () => {
-    const [suggestions, setSuggestions] = useState([]);
+    const [suggestions, setSuggestions] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -25,21 +26,10 @@ const CourseSuggestions = () => {
 
     const fetchSuggestions = async () => {
         try {
-            console.log('Fetching course suggestions...');
-            
-            // First, check if courses exist
-            const coursesResponse = await axios.get('/api/courses');
-            console.log('All courses:', coursesResponse.data);
-
-            // Then get user's course status
-            const statusResponse = await axios.get('/api/courses/my-courses');
-            console.log('User course status:', statusResponse.data);
-
-            // Finally get suggestions
-            const suggestionsResponse = await axios.get('/api/courses/suggestions');
-            console.log('Course suggestions:', suggestionsResponse.data);
-            
-            setSuggestions(suggestionsResponse.data);
+            setLoading(true);
+            const response = await axios.get('/api/courses/suggestions');
+            console.log('Course suggestions response:', response.data);
+            setSuggestions(response.data);
             setError(null);
         } catch (err) {
             console.error('Error fetching course suggestions:', err.response || err);
@@ -57,7 +47,7 @@ const CourseSuggestions = () => {
             }
             
             setError(errorMessage);
-            setSuggestions([]);
+            setSuggestions(null);
         } finally {
             setLoading(false);
         }
@@ -95,7 +85,7 @@ const CourseSuggestions = () => {
         );
     }
 
-    if (!suggestions || suggestions.length === 0) {
+    if (!suggestions || !suggestions.suggestedCourses || suggestions.suggestedCourses.length === 0) {
         return (
             <Paper sx={{ p: 3, mt: 2, textAlign: 'center' }}>
                 <Typography variant="h6" color="text.secondary">
@@ -108,72 +98,102 @@ const CourseSuggestions = () => {
         );
     }
 
-    // Group courses by semester
-    const groupedSuggestions = suggestions.reduce((acc, course) => {
-        if (!acc[course.semester]) {
-            acc[course.semester] = [];
-        }
-        acc[course.semester].push(course);
-        return acc;
-    }, {});
-
     return (
         <Box sx={{ mt: 2 }}>
+            {/* Current Status */}
+            {suggestions.currentStatus && (
+                <Paper sx={{ p: 2, mb: 3 }}>
+                    <Typography variant="h6" gutterBottom>
+                        Current Status
+                    </Typography>
+                    <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <Typography variant="subtitle2" color="text.secondary">
+                                CGPA
+                            </Typography>
+                            <Typography variant="h6">
+                                {suggestions.currentStatus.cgpa?.toFixed(2) || 'N/A'}
+                            </Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <Typography variant="subtitle2" color="text.secondary">
+                                Current Courses
+                            </Typography>
+                            <Typography variant="h6">
+                                {suggestions.currentStatus.currentCourseCount || 0}
+                            </Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <Typography variant="subtitle2" color="text.secondary">
+                                Maximum Courses
+                            </Typography>
+                            <Typography variant="h6">
+                                {suggestions.currentStatus.maxCourses || 'N/A'}
+                            </Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <Typography variant="subtitle2" color="text.secondary">
+                                Status
+                            </Typography>
+                            <Chip 
+                                label={suggestions.currentStatus.canTakeMore ? "Can take more courses" : "Maximum courses reached"}
+                                color={suggestions.currentStatus.canTakeMore ? "success" : "error"}
+                                size="small"
+                            />
+                        </Grid>
+                    </Grid>
+                </Paper>
+            )}
+
+            {/* Course Suggestions */}
             <Typography variant="h5" gutterBottom>
                 Suggested Courses
             </Typography>
             
-            {Object.entries(groupedSuggestions).sort((a, b) => a[0] - b[0]).map(([semester, courses]) => (
-                <Box key={semester} sx={{ mb: 4 }}>
-                    <Typography variant="h6" color="primary" gutterBottom>
-                        Semester {semester}
-                    </Typography>
-                    <Grid container spacing={2}>
-                        {courses.map((course) => (
-                            <Grid item xs={12} md={6} key={course.code}>
-                                <Card>
-                                    <CardContent>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                            <Typography variant="h6" component="div">
-                                                {course.code}
-                                            </Typography>
+            <Grid container spacing={2}>
+                {suggestions.suggestedCourses.map((course) => (
+                    <Grid item xs={12} md={6} key={course.code}>
+                        <Card>
+                            <CardContent>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                    <Typography variant="h6" component="div">
+                                        {course.code}
+                                    </Typography>
+                                    <Stack direction="row" spacing={1}>
+                                        <Chip 
+                                            label={`${course.credits} credits`}
+                                            size="small"
+                                            color="primary"
+                                        />
+                                        {course.isRequired && (
                                             <Chip 
-                                                label={`${course.credits} credits`}
+                                                label="Required"
                                                 size="small"
-                                                color="primary"
+                                                color="secondary"
                                             />
-                                        </Box>
-                                        <Typography variant="subtitle1" gutterBottom>
-                                            {course.name}
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary" paragraph>
-                                            {course.description}
-                                        </Typography>
-                                        {course.prerequisites && course.prerequisites.length > 0 && (
-                                            <>
-                                                <Divider sx={{ my: 1 }} />
-                                                <Typography variant="body2" color="text.secondary">
-                                                    Prerequisites:
-                                                </Typography>
-                                                <Box sx={{ mt: 1 }}>
-                                                    {course.prerequisites.map((prereq) => (
-                                                        <Chip
-                                                            key={prereq}
-                                                            label={prereq}
-                                                            size="small"
-                                                            sx={{ mr: 0.5, mb: 0.5 }}
-                                                        />
-                                                    ))}
-                                                </Box>
-                                            </>
                                         )}
-                                    </CardContent>
-                                </Card>
-                            </Grid>
-                        ))}
+                                    </Stack>
+                                </Box>
+                                <Typography variant="subtitle1" gutterBottom>
+                                    {course.name}
+                                </Typography>
+                                {course.description && (
+                                    <Typography variant="body2" color="text.secondary" paragraph>
+                                        {course.description}
+                                    </Typography>
+                                )}
+                                {course.prerequisites && course.prerequisites.length > 0 && (
+                                    <Box sx={{ mt: 1 }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Prerequisites: {course.prerequisites.join(', ')}
+                                        </Typography>
+                                    </Box>
+                                )}
+                            </CardContent>
+                        </Card>
                     </Grid>
-                </Box>
-            ))}
+                ))}
+            </Grid>
         </Box>
     );
 };

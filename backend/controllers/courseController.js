@@ -1,102 +1,178 @@
 const Course = require('../models/Course');
 const User = require('../models/User');
+const { prerequisites, courseLoadRules, courseTypes } = require('../data/prerequisites');
+const { trackDegreeProgress, suggestGenEdElectives } = require('../utils/degreeProgress');
+const { degreePlan } = require('../data/degreePlan');
 
-// Get all courses
-const getAllCourses = async (req, res) => {
-    try {
-        console.log('Fetching all courses...');
-        const courses = await Course.find({})
-            .sort({ code: 1 }); // Sort by course code
-        console.log(`Found ${courses.length} courses`);
-        res.json(courses);
-    } catch (error) {
-        console.error('Error fetching courses:', error);
-        res.status(500).json({ 
-            error: 'Failed to fetch courses',
-            details: error.message 
-        });
-    }
+// Helper function to check if prerequisites are met
+const checkPrerequisites = (course, completedCourses) => {
+    const coursePrereqs = prerequisites[course.code];
+    if (!coursePrereqs) return true;
+
+    return coursePrereqs.hardPrereqs.every(prereq => 
+        completedCourses.includes(prereq)
+    );
 };
 
-// Get course suggestions for a student
+// Helper function to get maximum allowed courses based on CGPA
+const getMaxCourses = (cgpa) => {
+    if (cgpa >= courseLoadRules.maximum.minCGPA) {
+        return courseLoadRules.maximum.maxCourses;
+    } else if (cgpa >= courseLoadRules.extended.minCGPA) {
+        return courseLoadRules.extended.maxCourses;
+    }
+    return courseLoadRules.regular.maxCourses;
+};
+
+// Get first semester courses
+const getFirstSemesterCourses = () => {
+    return Object.entries(prerequisites)
+        .filter(([_, info]) => info.semester === 1)
+        .map(([code]) => code);
+};
+
+// Get course suggestions
 const getCourseSuggestions = async (req, res) => {
-    console.log('Getting course suggestions for user:', req.user?._id);
-    
     try {
         if (!req.user) {
-            console.log('No user found in request');
             return res.status(401).json({ error: 'User not authenticated' });
         }
 
-        const user = await User.findById(req.user._id);
-        console.log('Found user:', user ? 'Yes' : 'No');
-        
+        const user = await User.findById(req.user._id)
+            .populate('completedCourses')
+            .populate('currentCourses');
+
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
 
+        // Get completed and current courses
+        const completedCourses = (user.completedCourses || []).map(course => course.code);
+        const currentCourses = (user.currentCourses || []).map(course => course.code);
+        const totalCompletedCredits = (user.completedCourses || []).reduce((sum, course) => sum + (course.credits || 0), 0);
+
+        // Determine current semester based on completed credits
+        const currentSemester = Math.floor(totalCompletedCredits / 15) + 1;
+
         // Get all active courses
         const allCourses = await Course.find({ isActive: true });
-        
-        // Get completed course codes
-        const completedCourseCodes = user.completedCourses || [];
-        const currentCourseCodes = user.currentCourses || [];
-        
-        console.log('Completed courses:', completedCourseCodes);
-        console.log('Current courses:', currentCourseCodes);
 
-        // Filter courses
-        const suggestedCourses = allCourses.filter(course => {
-            // Skip if course is completed or currently taking
-            if (completedCourseCodes.includes(course.code) || 
-                currentCourseCodes.includes(course.code)) {
-                return false;
-            }
+        // Calculate max courses based on CGPA
+        const maxCourses = getMaxCourses(user.cgpa || 0);
+        const currentCourseCount = currentCourses.length;
 
-            // Check prerequisites
-            if (!course.prerequisites || course.prerequisites.length === 0) {
-                return true; // No prerequisites needed
-            }
+        // Get first semester courses if no courses completed
+        let suggestedCourses;
+        if (completedCourses.length === 0 && currentCourses.length === 0) {
+            // Get first semester course codes
+            const firstSemesterCourseCodes = getFirstSemesterCourses();
+            console.log('First semester course codes:', firstSemesterCourseCodes);
 
-            // Check if all prerequisites are completed
-            return course.prerequisites.every(prereq => 
-                completedCourseCodes.includes(prereq)
-            );
+            // Get course details for first semester courses
+            suggestedCourses = allCourses
+                .filter(course => firstSemesterCourseCodes.includes(course.code))
+                .map(course => ({
+                    ...course.toObject(),
+                    type: prerequisites[course.code]?.type || 'Unknown',
+                    semester: 1
+                }))
+                .slice(0, maxCourses);
+
+            console.log('Suggested courses for first semester:', suggestedCourses);
+        } else {
+            // Filter and sort courses for next semester
+            const nextSemester = currentSemester;
+            suggestedCourses = allCourses
+                .filter(course => {
+                    // Skip completed or current courses
+                    if (completedCourses.includes(course.code) || 
+                        currentCourses.includes(course.code)) {
+                        return false;
+                    }
+
+                    // Check prerequisites
+                    return checkPrerequisites(course, completedCourses);
+                })
+                .map(course => ({
+                    ...course.toObject(),
+                    type: prerequisites[course.code]?.type || 'Unknown',
+                    semester: prerequisites[course.code]?.semester || 0
+                }))
+                .sort((a, b) => {
+                    // Sort by semester first
+                    if (a.semester !== b.semester) {
+                        return a.semester - b.semester;
+                    }
+
+                    // Then prioritize required courses
+                    if (a.isRequired !== b.isRequired) {
+                        return b.isRequired - a.isRequired;
+                    }
+
+                    // Then prioritize by course type
+                    const typeOrder = {
+                        [courseTypes.PROGRAM_CORE]: 1,
+                        [courseTypes.SCHOOL_CORE]: 2,
+                        [courseTypes.GEN_ED]: 3,
+                        [courseTypes.PROGRAM_ELECTIVE]: 4,
+                        [courseTypes.THESIS]: 5,
+                        'Unknown': 6
+                    };
+                    return typeOrder[a.type] - typeOrder[b.type];
+                })
+                .slice(0, maxCourses - currentCourseCount);
+        }
+
+        res.json({
+            currentStatus: {
+                cgpa: user.cgpa || 0,
+                currentCourseCount,
+                maxCourses,
+                canTakeMore: currentCourseCount < maxCourses,
+                currentSemester,
+                totalCredits: totalCompletedCredits
+            },
+            suggestedCourses
         });
 
-        console.log(`Found ${suggestedCourses.length} suggested courses`);
-        res.json(suggestedCourses);
-
     } catch (error) {
-        console.error('Error getting course suggestions:', error);
+        console.error('Error in getCourseSuggestions:', error);
         res.status(500).json({ 
             error: 'Failed to get course suggestions',
-            details: error.message 
+            details: error.message
         });
     }
 };
 
-// Add a new course
-const addCourse = async (req, res) => {
+// Get degree progress
+const getDegreeProgress = async (req, res) => {
     try {
-        const courseData = req.body;
-        console.log('Adding new course:', courseData);
+        if (!req.user) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
 
-        const course = new Course(courseData);
-        await course.save();
+        const user = await User.findById(req.user._id)
+            .populate('completedCourses')
+            .populate('currentCourses');
 
-        console.log('Course added successfully:', course.code);
-        res.status(201).json(course);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const completedCourses = user.completedCourses || [];
+        const progress = trackDegreeProgress(completedCourses);
+
+        res.json(progress);
     } catch (error) {
-        console.error('Error adding course:', error);
+        console.error('Error in getDegreeProgress:', error);
         res.status(500).json({ 
-            error: 'Failed to add course',
-            details: error.message 
+            error: 'Failed to get degree progress',
+            details: error.message
         });
     }
 };
 
-// Update student's completed courses
+// Update completed courses with validation
 const updateCompletedCourses = async (req, res) => {
     try {
         if (!req.user) {
@@ -104,27 +180,33 @@ const updateCompletedCourses = async (req, res) => {
         }
 
         const { completedCourses } = req.body;
-        console.log('Updating completed courses for user:', req.user._id);
-        console.log('New completed courses:', completedCourses);
+        if (!Array.isArray(completedCourses)) {
+            return res.status(400).json({ error: 'Invalid completedCourses format' });
+        }
+
+        // Validate all courses exist
+        const courses = await Course.find({ code: { $in: completedCourses } });
+        if (courses.length !== completedCourses.length) {
+            return res.status(400).json({ error: 'One or more courses not found' });
+        }
 
         const user = await User.findByIdAndUpdate(
             req.user._id,
-            { completedCourses },
+            { completedCourses: courses.map(course => course._id) },
             { new: true }
         );
 
-        console.log('Updated user completed courses');
-        res.json(user);
+        res.json({ message: 'Completed courses updated successfully' });
     } catch (error) {
-        console.error('Error updating completed courses:', error);
+        console.error('Error in updateCompletedCourses:', error);
         res.status(500).json({ 
             error: 'Failed to update completed courses',
-            details: error.message 
+            details: error.message
         });
     }
 };
 
-// Update student's current courses
+// Update current courses with validation
 const updateCurrentCourses = async (req, res) => {
     try {
         if (!req.user) {
@@ -132,30 +214,51 @@ const updateCurrentCourses = async (req, res) => {
         }
 
         const { currentCourses } = req.body;
-        console.log('Updating current courses for user:', req.user._id);
-        console.log('New current courses:', currentCourses);
+        if (!Array.isArray(currentCourses)) {
+            return res.status(400).json({ error: 'Invalid currentCourses format' });
+        }
 
-        const user = await User.findByIdAndUpdate(
-            req.user._id,
-            { currentCourses },
-            { new: true }
-        );
+        // Get user with populated courses
+        const user = await User.findById(req.user._id)
+            .populate('completedCourses')
+            .populate('currentCourses');
 
-        console.log('Updated user current courses');
-        res.json(user);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Validate all courses exist
+        const courses = await Course.find({ code: { $in: currentCourses } });
+        if (courses.length !== currentCourses.length) {
+            return res.status(400).json({ error: 'One or more courses not found' });
+        }
+
+        // Check maximum course limit
+        const maxCourses = getMaxCourses(user.cgpa || 0);
+        if (currentCourses.length > maxCourses) {
+            return res.status(400).json({ 
+                error: 'Maximum course limit exceeded',
+                maxCourses
+            });
+        }
+
+        // Update user's current courses
+        user.currentCourses = courses.map(course => course._id);
+        await user.save();
+
+        res.json({ message: 'Current courses updated successfully' });
     } catch (error) {
-        console.error('Error updating current courses:', error);
+        console.error('Error in updateCurrentCourses:', error);
         res.status(500).json({ 
             error: 'Failed to update current courses',
-            details: error.message 
+            details: error.message
         });
     }
 };
 
 module.exports = {
-    getAllCourses,
     getCourseSuggestions,
-    addCourse,
+    getDegreeProgress,
     updateCompletedCourses,
     updateCurrentCourses
 };
