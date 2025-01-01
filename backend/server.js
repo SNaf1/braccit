@@ -27,11 +27,13 @@ const authRoutes = require('./routes/auth');
 const communityRoutes = require('./routes/community');
 const postRoutes = require('./routes/posts');
 const searchRoutes = require('./routes/search');
+const eventRoutes = require('./routes/event');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/b', communityRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api', eventRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Event from '../Event/Event';
 import { useParams } from 'react-router-dom';
 import {
   Box,
@@ -320,14 +321,17 @@ const CommunityDetail = () => {
             )}
 
             {community.isAdmin && (
-              <Button
-                onClick={() => setSettingsOpen(true)}
-                startIcon={<SettingsIcon />}
-                fullWidth
-                sx={{ mt: 1 }}
-              >
-                Community Settings
-              </Button>
+              <>
+                <Button
+                  onClick={() => setSettingsOpen(true)}
+                  startIcon={<SettingsIcon />}
+                  fullWidth
+                  sx={{ mt: 1 }}
+                >
+                  Community Settings
+                </Button>
+                <Event communityId={community._id} />
+              </>
             )}
           </Paper>
         </Box>
