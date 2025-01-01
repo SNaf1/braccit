@@ -55,21 +55,23 @@ const AllCourses = () => {
     }, [searchTerm, department, minSeats, courses]);
 
     const fetchCourses = async () => {
+        setLoading(true);
+        setError(null);
         try {
-            setLoading(true);
-            const response = await axios.get('/api/courses/suggestions');
-            if (response.data && response.data.suggestedCourses) {
-                setSuggestions(response.data);
-                setCourses(response.data.suggestedCourses);
-                setFilteredCourses(response.data.suggestedCourses);
-            } else {
-                throw new Error('Invalid response format');
+            const response = await axios.get('/api/courses');
+            if (response.data.length > 0) {
+                console.log('Frontend received course data sample:', {
+                    instructor: response.data[0].instructor,
+                    schedules: response.data[0].schedules,
+                    labSchedules: response.data[0].labSchedules,
+                    fullCourse: response.data[0]
+                });
             }
-        } catch (err) {
-            console.error('Error fetching courses:', err);
-            setError(err.response?.data?.message || 'Failed to load courses. Please try again later.');
-            setCourses([]);
-            setFilteredCourses([]);
+            setCourses(response.data);
+            setFilteredCourses(response.data);
+        } catch (error) {
+            console.error('Error fetching courses:', error);
+            setError('Failed to fetch courses. Please try again later.');
         } finally {
             setLoading(false);
         }
@@ -84,23 +86,31 @@ const AllCourses = () => {
 
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
-            filtered = filtered.filter(course => 
-                (course.code && course.code.toLowerCase().includes(term)) ||
-                (course.name && course.name.toLowerCase().includes(term)) ||
-                (course.description && course.description.toLowerCase().includes(term))
-            );
+            filtered = filtered.filter(course => {
+                const courseCode = (course.courseCode || course.code || '').toLowerCase();
+                const courseName = (course.courseTitle || course.name || '').toLowerCase();
+                const courseDetails = (course.courseDetails || course.description || '').toLowerCase();
+                const faculty = (course.faculty || '').toLowerCase();
+
+                return courseCode.includes(term) ||
+                       courseName.includes(term) ||
+                       courseDetails.includes(term) ||
+                       faculty.includes(term);
+            });
         }
 
         if (department !== 'all') {
-            filtered = filtered.filter(course => 
-                course.code && course.code.startsWith(department)
-            );
+            filtered = filtered.filter(course => {
+                const courseCode = course.courseCode || course.code || '';
+                return courseCode.startsWith(department);
+            });
         }
 
         if (minSeats > 0) {
-            filtered = filtered.filter(course => 
-                course.availableSeats && course.availableSeats >= minSeats
-            );
+            filtered = filtered.filter(course => {
+                const seats = parseInt(course.availableSeat || course.availableSeats || 0);
+                return seats >= minSeats;
+            });
         }
 
         setFilteredCourses(filtered);
@@ -205,78 +215,98 @@ const AllCourses = () => {
 
                 {/* Course List */}
                 <Grid container spacing={2}>
-                    {filteredCourses.map((course) => (
-                        <Grid item xs={12} md={6} lg={4} key={course.code || course._id}>
-                            <Card>
-                                <CardContent>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                        <Typography variant="h6" component="div">
-                                            {course.code}: {course.name}
-                                        </Typography>
-                                        <Chip 
-                                            label={`${course.credits} Credits`}
-                                            color="primary"
-                                            size="small"
-                                        />
-                                    </Box>
-                                    
-                                    {course.description && (
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                            {course.description}
-                                        </Typography>
-                                    )}
-
-                                    <Stack spacing={1}>
-                                        {course.department && (
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <SchoolIcon fontSize="small" color="action" />
-                                                <Typography variant="body2">
-                                                    {course.department}
-                                                </Typography>
-                                            </Box>
+                    {filteredCourses.map((course, index) => {
+                        // Create a unique key using course code, section, and faculty
+                        const uniqueKey = `${course.courseCode || course.code}_${course.section || ''}_${course.faculty || ''}_${index}`;
+                        
+                        return (
+                            <Grid item xs={12} md={6} lg={4} key={uniqueKey}>
+                                <Card>
+                                    <CardContent>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                            <Typography variant="h6" component="div">
+                                                {course.courseCode || course.code}: {course.courseTitle || course.name}
+                                                {course.section && 
+                                                    <Typography component="span" color="text.secondary" sx={{ ml: 1 }}>
+                                                        (Section {course.section})
+                                                    </Typography>
+                                                }
+                                            </Typography>
+                                            <Chip 
+                                                label={`${course.courseCredit || course.credits} Credits`}
+                                                color="primary"
+                                                size="small"
+                                            />
+                                        </Box>
+                                        
+                                        {(course.courseDetails || course.description) && (
+                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                                {course.courseDetails || course.description}
+                                            </Typography>
                                         )}
 
-                                        {course.instructor && (
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <PersonIcon fontSize="small" color="action" />
-                                                <Typography variant="body2">
-                                                    Instructor: {course.instructor}
-                                                </Typography>
-                                            </Box>
-                                        )}
+                                        <Stack spacing={1}>
+                                            {(course.department || (course.courseCode && course.courseCode.split(' ')[0])) && (
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <SchoolIcon fontSize="small" color="action" />
+                                                    <Typography variant="body2">
+                                                        {course.department || course.courseCode.split(' ')[0]}
+                                                    </Typography>
+                                                </Box>
+                                            )}
 
-                                        {course.schedule && course.schedule.length > 0 && (
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <EventIcon fontSize="small" color="action" />
-                                                <Typography variant="body2">
-                                                    Schedule: {course.schedule.map(s => 
-                                                        `${s.day} ${s.time}`
-                                                    ).join(', ')}
-                                                </Typography>
-                                            </Box>
-                                        )}
-                                    </Stack>
+                                            {course.instructor && (
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <PersonIcon fontSize="small" color="action" />
+                                                    <Typography variant="body2">
+                                                        {course.instructor}
+                                                        {course.instructorInitials && ` (${course.instructorInitials})`}
+                                                    </Typography>
+                                                </Box>
+                                            )}
 
-                                    <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-                                        <Chip 
-                                            label={`${course.availableSeats || 0} seats available`}
-                                            color={course.availableSeats > 0 ? "success" : "error"}
-                                            size="small"
-                                        />
-                                        {course.prerequisites && course.prerequisites.length > 0 && (
-                                            <Tooltip title={`Prerequisites: ${course.prerequisites.join(', ')}`}>
-                                                <Chip 
-                                                    label="Has Prerequisites"
-                                                    color="warning"
-                                                    size="small"
-                                                />
-                                            </Tooltip>
-                                        )}
-                                    </Box>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-                    ))}
+                                            {course.schedules && course.schedules.length > 0 && (
+                                                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                                                    <EventIcon fontSize="small" color="action" sx={{ mt: 0.5 }} />
+                                                    <Typography variant="body2" component="div" sx={{ 
+                                                        fontFamily: 'inherit',
+                                                        whiteSpace: 'pre-wrap',
+                                                        wordBreak: 'break-word'
+                                                    }}>
+                                                        {[...new Set(course.schedules)].map((schedule, index) => (
+                                                            <div key={index}>{schedule}</div>
+                                                        ))}
+                                                    </Typography>
+                                                </Box>
+                                            )}
+                                        </Stack>
+
+                                        <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                            <Chip 
+                                                label={`${course.availableSeat || course.availableSeats || 0} seats available`}
+                                                color={(course.availableSeat || course.availableSeats) > 0 ? "success" : "error"}
+                                                size="small"
+                                            />
+                                            {(course.preRequisiteCourses || course.prerequisites) && 
+                                             (course.preRequisiteCourses?.trim() || course.prerequisites?.length > 0) && (
+                                                <Tooltip title={`Prerequisites: ${
+                                                    Array.isArray(course.prerequisites) 
+                                                        ? course.prerequisites.join(', ')
+                                                        : course.preRequisiteCourses || 'None'
+                                                }`}>
+                                                    <Chip 
+                                                        label="Has Prerequisites"
+                                                        color="warning"
+                                                        size="small"
+                                                    />
+                                                </Tooltip>
+                                            )}
+                                        </Box>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        );
+                    })}
                 </Grid>
 
                 {filteredCourses.length === 0 && !loading && (

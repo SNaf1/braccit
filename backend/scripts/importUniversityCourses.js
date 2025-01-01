@@ -40,8 +40,7 @@ const fetchAndFormatCourses = async () => {
         console.log(`Fetched ${rawCourses.length} course sections`);
         
         // Remove duplicate courses (keeping the one with most available seats)
-        const uniqueCourses = removeDuplicateCourses(rawCourses);
-        console.log(`Reduced to ${uniqueCourses.length} unique courses`);
+       
 
         // Map the API data to our Course model structure
         const formattedCourses = uniqueCourses.map(course => ({
