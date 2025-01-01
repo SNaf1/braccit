@@ -12,6 +12,7 @@ const courseRoutes = require('./routes/courses');
 const commentRoutes = require('./routes/comments');
 const notificationRoutes = require('./routes/notifications');
 const searchRoutes = require('./routes/search');
+const studentCourseRoutes = require('./routes/studentCourses');
 const fs = require('fs');
 const path = require('path');
 
@@ -74,6 +75,9 @@ console.log('Notification routes loaded');
 
 app.use('/api/search', searchRoutes);
 console.log('Search routes loaded');
+
+app.use('/api/student-courses', studentCourseRoutes);
+console.log('Student course routes loaded');
 
 // Health check route
 app.get('/health', (req, res) => {

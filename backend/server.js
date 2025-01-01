@@ -37,6 +37,7 @@ const communityRoutes = require('./routes/community');
 const postRoutes = require('./routes/posts');
 const searchRoutes = require('./routes/search');
 const courseRoutes = require('./routes/courses');
+const studentCourseRoutes = require('./routes/studentCourses');
 
 app.use('/api/auth', authRoutes);
 console.log('Auth routes loaded');
@@ -52,6 +53,9 @@ console.log('Search routes loaded');
 
 app.use('/api/courses', courseRoutes);
 console.log('Course routes loaded');
+
+app.use('/api/student-courses', studentCourseRoutes);
+console.log('Student course routes loaded');
 
 // Debug endpoint
 app.get('/api/debug', (req, res) => {
