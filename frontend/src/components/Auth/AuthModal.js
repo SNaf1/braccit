@@ -92,6 +92,7 @@ const AuthModal = () => {
     const [registerUsername, setRegisterUsername] = useState('');
     const [registerEmail, setRegisterEmail] = useState('');
     const [registerPassword, setRegisterPassword] = useState('');
+    const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [verificationSent, setVerificationSent] = useState(false);
     const [localError, setLocalError] = useState('');
@@ -114,12 +115,12 @@ const AuthModal = () => {
                 return false;
             }
         } else {
-            if (!registerUsername.trim() || !registerEmail.trim() || !registerPassword.trim()) {
+            if (!registerUsername.trim() || !registerEmail.trim() || !registerPassword.trim() || !registerConfirmPassword.trim()) {
                 setLocalError('Please fill in all required fields');
                 return false;
             }
 
-            if (registerPassword !== registerPassword) {
+            if (registerPassword !== registerConfirmPassword) {
                 setLocalError('Passwords do not match');
                 return false;
             }
@@ -166,6 +167,7 @@ const AuthModal = () => {
         setRegisterUsername('');
         setRegisterEmail('');
         setRegisterPassword('');
+        setRegisterConfirmPassword('');
         setVerificationSent(false);
         setMode('login');
     };
@@ -262,8 +264,8 @@ const AuthModal = () => {
                                     label="Confirm Password"
                                     name="confirmPassword"
                                     type="password"
-                                    value={registerPassword}
-                                    onChange={(e) => setRegisterPassword(e.target.value)}
+                                    value={registerConfirmPassword}
+                                    onChange={(e) => setRegisterConfirmPassword(e.target.value)}
                                     InputProps={{
                                         startAdornment: <LockIcon sx={{ mr: 1, color: 'grey.500' }} />
                                     }}

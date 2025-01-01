@@ -77,50 +77,69 @@ const Navbar = () => {
           to="/"
           edge="start"
           color="inherit"
-          aria-label="home"
           sx={{ mr: 2 }}
         >
           <SchoolIcon />
         </IconButton>
-
         <Typography
           variant="h6"
+          noWrap
           component={Link}
           to="/"
           sx={{
-            textDecoration: 'none',
+            mr: 2,
+            display: { xs: 'none', md: 'flex' },
+            fontWeight: 700,
             color: 'inherit',
-            flexGrow: 0,
-            display: { xs: 'none', sm: 'block' }
+            textDecoration: 'none',
           }}
         >
           Braccit
         </Typography>
 
-        <form onSubmit={handleSearch} style={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
-          <Search>
-            <SearchIconWrapper>
-              <SearchIcon />
-            </SearchIconWrapper>
-            <StyledInputBase
-              placeholder="Search..."
-              inputProps={{ 'aria-label': 'search' }}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </Search>
-        </form>
+        <Search component="form" onSubmit={handleSearch}>
+          <SearchIconWrapper>
+            <SearchIcon />
+          </SearchIconWrapper>
+          <StyledInputBase
+            placeholder="Search…"
+            inputProps={{ 'aria-label': 'search' }}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleSearch(e);
+              }
+            }}
+          />
+        </Search>
 
-        <Box sx={{ flexGrow: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ flexGrow: 1 }} />
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Button
+            component={Link}
+            to="/routine"
+            color="inherit"
+            sx={{
+              display: { xs: 'none', md: 'flex' },
+              alignItems: 'center',
+              gap: 1
+            }}
+          >
+            Routine
+          </Button>
+
           {user ? (
             <>
               <Button
                 component={Link}
                 to="/create-post"
                 variant="contained"
-                color="secondary"
                 startIcon={<AddIcon />}
-                sx={{ display: { xs: 'none', sm: 'flex' } }}
+                sx={{
+                  display: { xs: 'none', md: 'flex' }
+                }}
               >
                 Create Post
               </Button>
@@ -132,7 +151,6 @@ const Navbar = () => {
             <Button
               color="inherit"
               onClick={openLoginModal}
-              sx={{ whiteSpace: 'nowrap' }}
             >
               Login / Register
             </Button>

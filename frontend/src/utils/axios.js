@@ -48,11 +48,7 @@ instance.interceptors.response.use(
                 // If refresh fails, clear auth data
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
-                
-                // Only redirect if not already on login page
-                if (!window.location.pathname.includes('/login')) {
-                    window.location.href = '/login';
-                }
+                // Don't redirect, let the component handle the error
             }
         }
 
