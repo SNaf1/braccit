@@ -309,29 +309,33 @@ const CommunityDetail = () => {
                 ) : (
                   <Button
                     variant="contained"
-                    color="primary"
                     onClick={handleJoinRequest}
                     startIcon={<PersonAddIcon />}
                     fullWidth
                   >
-                    {community.isPrivate ? 'Request to Join' : 'Join Community'}
+                    {community.isPrivate ? 'Request to Join' : 'Join'}
                   </Button>
                 )}
               </Box>
             )}
 
+            {/* Community Events Section */}
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Community Events
+              </Typography>
+              {community._id && <Event communityId={community._id} />}
+            </Box>
+
             {community.isAdmin && (
-              <>
-                <Button
-                  onClick={() => setSettingsOpen(true)}
-                  startIcon={<SettingsIcon />}
-                  fullWidth
-                  sx={{ mt: 1 }}
-                >
-                  Community Settings
-                </Button>
-                <Event communityId={community._id} />
-              </>
+              <Button
+                onClick={() => setSettingsOpen(true)}
+                startIcon={<SettingsIcon />}
+                fullWidth
+                sx={{ mt: 1 }}
+              >
+                Community Settings
+              </Button>
             )}
           </Paper>
         </Box>

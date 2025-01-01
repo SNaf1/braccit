@@ -34,16 +34,22 @@ const Event = ({ communityId }) => {
     useEffect(() => {
         const fetchEvents = async () => {
             try {
-                const response = await axios.get(`/api/${communityId}/events`);
+                const response = await axios.get(`/api/b/${communityId}/events`);
                 setEvents(response.data);
             } catch (err) {
-                setError('Error fetching events');
+                if (err.response && err.response.status === 403) {
+                    setError('Access denied: You must be a member of the community to view events.');
+                } else {
+                    setError('Error fetching events: ' + (err.response?.data?.error || err.message));
+                }
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchEvents();
+        if (communityId) {
+            fetchEvents();
+        }
     }, [communityId]);
 
     const handleChange = (e) => {
@@ -53,13 +59,13 @@ const Event = ({ communityId }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post(`/api/${communityId}/events`, formData);
+            await axios.post(`/api/b/${communityId}/events`, formData);
             setOpen(false);
             setFormData({ title: '', description: '', startTime: '' });
-            const response = await axios.get(`/api/${communityId}/events`);
+            const response = await axios.get(`/api/b/${communityId}/events`);
             setEvents(response.data);
         } catch (err) {
-            setError('Error creating event');
+            setError('Error creating event: ' + (err.response?.data?.error || err.message));
         }
     };
 

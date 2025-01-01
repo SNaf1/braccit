@@ -23,20 +23,22 @@ const EventDetail = () => {
     useEffect(() => {
         const fetchEvent = async () => {
             try {
-                console.log('Fetching event with ID:', eventId); // Log the eventId
-                const response = await axios.get(`/api/events/${eventId}`);
+                console.log('Fetching event with ID:', eventId);
+                const response = await axios.get(`/api/b/events/${eventId}`);
                 setEvent(response.data);
-                setGoing(response.data.going?.includes(user._id) || false);
+                setGoing(response.data.going?.includes(user?._id) || false);
             } catch (err) {
                 console.error('Error fetching event details:', err);
-                setError('Error fetching event details');
+                setError(err.response?.data?.error || 'Error fetching event details');
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchEvent();
-    }, [eventId, user._id]);
+        if (eventId) {
+            fetchEvent();
+        }
+    }, [eventId, user?._id]);
 
     const calculateTimeLeft = useCallback(() => {
         if (!event) return {};
@@ -69,13 +71,12 @@ const EventDetail = () => {
         return () => clearInterval(timer);
     }, [event, navigate, calculateTimeLeft]);
 
-    const handleGoing = async (status) => {
+    const handleGoingClick = async () => {
         try {
-            await axios.post(`/api/events/${eventId}/going`, { going: status });
-            setGoing(status);
+            await axios.post(`/api/b/events/${eventId}/going`);
+            setGoing(!going);
         } catch (err) {
-            console.error('Error updating going status:', err);
-            setError('Error updating going status');
+            setError(err.response?.data?.error || 'Error updating attendance status');
         }
     };
 
@@ -111,7 +112,7 @@ const EventDetail = () => {
             <Button
                 variant="contained"
                 color={going ? "secondary" : "primary"}
-                onClick={() => handleGoing(!going)}
+                onClick={handleGoingClick}
             >
                 {going ? "Not Going" : "Going"}
             </Button>
