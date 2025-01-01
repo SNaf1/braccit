@@ -253,8 +253,11 @@ exports.login = async (req, res) => {
 // Get current user
 exports.getCurrentUser = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
-        res.status(200).json({ user });
+        const user = await User.findById(req.user.id).select('-password');
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json(user);
     } catch (error) {
         console.error('Get current user error:', error);
         res.status(500).json({ error: 'Server error while fetching user data' });
@@ -321,23 +324,37 @@ exports.updateProfile = async (req, res) => {
 // Change password
 exports.changePassword = async (req, res) => {
     try {
+        console.log('Change password request received:', {
+            userId: req.user?.id,
+            body: req.body
+        });
+
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
+            console.log('Validation errors:', errors.array());
             return res.status(400).json({ error: errors.array()[0].msg });
         }
 
         const user = await User.findById(req.user.id).select('+password');
-        const { currentPassword, newPassword } = req.body;
+        if (!user) {
+            console.log('User not found:', req.user.id);
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const { oldPassword, newPassword } = req.body;
+        console.log('Attempting password match for user:', user.username);
 
         // Check current password
-        const isMatch = await user.matchPassword(currentPassword);
+        const isMatch = await user.matchPassword(oldPassword);
         if (!isMatch) {
+            console.log('Password match failed for user:', user.username);
             return res.status(401).json({ error: 'Current password is incorrect' });
         }
 
         // Update password
         user.password = newPassword;
         await user.save();
+        console.log('Password updated successfully for user:', user.username);
 
         res.status(200).json({
             message: 'Password changed successfully'

@@ -13,6 +13,7 @@ import PostDetail from './components/Post/PostDetail';
 import SearchResults from './pages/SearchResults';
 import NotFound from './components/NotFound';
 import Home from './pages/Home';
+import UserProfile from './pages/UserProfile';
 import { AuthProvider } from './contexts/AuthContext';
 import VerifyEmail from './components/Auth/VerifyEmail';
 
@@ -70,6 +71,7 @@ function App() {
               }}>
                 <Routes>
                   <Route path="/" element={<Home />} />
+                  <Route path="/user/:username" element={<UserProfile />} />
                   <Route path="/b/:name" element={<CommunityDetail />} />
                   <Route path="/b/:name/post/:postId" element={<PostDetail />} />
                   <Route path="/post/:postId" element={<PostDetail />} />

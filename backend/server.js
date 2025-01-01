@@ -17,9 +17,12 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Create uploads directory if it doesn't exist
+// Create uploads directories if they don't exist
 if (!fs.existsSync('uploads')) {
     fs.mkdirSync('uploads');
+}
+if (!fs.existsSync('uploads/profile-pictures')) {
+    fs.mkdirSync('uploads/profile-pictures');
 }
 
 // Routes
@@ -27,11 +30,13 @@ const authRoutes = require('./routes/auth');
 const communityRoutes = require('./routes/community');
 const postRoutes = require('./routes/posts');
 const searchRoutes = require('./routes/search');
+const userRoutes = require('./routes/users');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/b', communityRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/users', userRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));

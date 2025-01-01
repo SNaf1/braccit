@@ -26,6 +26,16 @@ const userSchema = new mongoose.Schema({
         minlength: [6, 'Password must be at least 6 characters long'],
         select: false // Don't include password in queries by default
     },
+    fullName: {
+        type: String,
+        trim: true,
+        maxlength: 50
+    },
+    bio: {
+        type: String,
+        trim: true,
+        maxlength: 500
+    },
     isEmailVerified: {
         type: Boolean,
         default: false
@@ -90,6 +100,22 @@ userSchema.methods.generateVerificationToken = function() {
     
     return verificationToken;
 };
+
+// Add a virtual for the full profile picture URL
+userSchema.virtual('profilePictureUrl').get(function() {
+    if (!this.profilePicture) return null;
+    return `http://localhost:5000/uploads/profile-pictures/${this.profilePicture}`;
+});
+
+// Include virtuals when converting to JSON
+userSchema.set('toJSON', {
+    virtuals: true,
+    transform: function(doc, ret) {
+        ret.profilePicture = ret.profilePictureUrl;
+        delete ret.profilePictureUrl;
+        return ret;
+    }
+});
 
 const User = mongoose.model('User', userSchema);
 

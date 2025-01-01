@@ -223,7 +223,7 @@ const CommunityDetail = () => {
             />
             <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <GroupIcon fontSize="small" />
-              {community.memberCount} member{community.memberCount !== 1 ? 's' : ''}
+              {community.memberCount || 0} member{(community.memberCount || 0) !== 1 ? 's' : ''}
             </Typography>
           </div>
         </BannerTitle>
@@ -271,14 +271,14 @@ const CommunityDetail = () => {
             <Typography variant="h6" gutterBottom>
               About b/{community.name}
             </Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
+            <Typography variant="body2" color="textSecondary" paragraph>
               {community.description}
             </Typography>
 
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <GroupIcon sx={{ mr: 1 }} />
-              <Typography variant="body2">
-                {community.memberCount} member{community.memberCount !== 1 ? 's' : ''}
+              <Typography variant="body2" color="textSecondary" sx={{ color: '#818384' }}>
+                {community.memberCount || 0} member{(community.memberCount || 0) !== 1 ? 's' : ''}
               </Typography>
             </Box>
 

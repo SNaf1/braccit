@@ -48,52 +48,28 @@ router.post(
 );
 
 // Login route
-router.post(
-    '/login',
-    authLimiter,
-    [
-        check('username', 'Username is required').trim().not().isEmpty(),
-        check('password', 'Password is required').exists()
-    ],
-    authController.login
-);
+router.post('/login', authLimiter, authController.login);
+
+// Verify email route
+router.get('/verify-email/:token', authController.verifyEmail);
+
+// Verify token route
+router.get('/verify', protect, (req, res) => {
+    res.status(200).json({ valid: true });
+});
 
 // Get current user route
 router.get('/me', protect, authController.getCurrentUser);
 
-// Update profile route
-router.put(
-    '/profile',
-    protect,
-    [
-        check('username')
-            .optional()
-            .trim()
-            .isLength({ min: 3, max: 30 })
-            .withMessage('Username must be between 3 and 30 characters')
-            .matches(/^[a-zA-Z0-9_]+$/)
-            .withMessage('Username can only contain letters, numbers, and underscores'),
-        check('email')
-            .optional()
-            .trim()
-            .isEmail()
-            .withMessage('Please provide a valid email')
-            .normalizeEmail(),
-        check('bio')
-            .optional()
-            .trim()
-            .isLength({ max: 500 })
-            .withMessage('Bio cannot exceed 500 characters')
-    ],
-    authController.updateProfile
-);
-
 // Change password route
-router.post(
+router.put(
     '/change-password',
     protect,
     [
-        check('currentPassword', 'Current password is required').exists(),
+        check('oldPassword')
+            .not()
+            .isEmpty()
+            .withMessage('Current password is required'),
         check('newPassword')
             .isLength({ min: 8 })
             .withMessage('Password must be at least 8 characters long')
@@ -108,16 +84,5 @@ router.post(
     ],
     authController.changePassword
 );
-
-// Verify token route
-router.get('/verify', protect, (req, res) => {
-    res.status(200).json({ valid: true });
-});
-
-// Verify email route
-router.get('/verify-email/:token', authController.verifyEmail);
-
-// Logout route
-router.post('/logout', protect, authController.logout);
 
 module.exports = router;

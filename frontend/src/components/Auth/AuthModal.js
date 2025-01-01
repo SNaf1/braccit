@@ -86,13 +86,14 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 
 const AuthModal = () => {
     const { isLoginModalOpen, closeLoginModal, login, register, error: authError, setError, authLoading } = useAuth();
-    const [isLogin, setIsLogin] = useState(true);
-    const [formData, setFormData] = useState({
-        username: '',
-        email: '',
-        password: '',
-        confirmPassword: ''
-    });
+    const [mode, setMode] = useState('login');
+    const [loginUsername, setLoginUsername] = useState('');
+    const [loginPassword, setLoginPassword] = useState('');
+    const [registerUsername, setRegisterUsername] = useState('');
+    const [registerEmail, setRegisterEmail] = useState('');
+    const [registerPassword, setRegisterPassword] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [verificationSent, setVerificationSent] = useState(false);
     const [localError, setLocalError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
 
@@ -101,24 +102,24 @@ const AuthModal = () => {
         setLocalError('');
         setError(null);
         setSuccessMessage('');
-    }, [isLogin, setError]);
+    }, [mode, setError]);
 
     // Display either local validation error or auth error
     const displayError = localError || authError;
 
     const validateForm = () => {
-        if (!formData.username.trim() || !formData.password.trim()) {
-            setLocalError('Please fill in all required fields');
-            return false;
-        }
-
-        if (!isLogin) {
-            if (!formData.email.trim() || !formData.confirmPassword.trim()) {
+        if (mode === 'login') {
+            if (!loginUsername.trim() || !loginPassword.trim()) {
+                setLocalError('Please fill in all required fields');
+                return false;
+            }
+        } else {
+            if (!registerUsername.trim() || !registerEmail.trim() || !registerPassword.trim()) {
                 setLocalError('Please fill in all required fields');
                 return false;
             }
 
-            if (formData.password !== formData.confirmPassword) {
+            if (registerPassword !== registerPassword) {
                 setLocalError('Passwords do not match');
                 return false;
             }
@@ -128,59 +129,45 @@ const AuthModal = () => {
         return true;
     };
 
-    const handleSubmit = async (e) => {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        
+        const success = await login(loginUsername, loginPassword);
+        if (success) {
+            resetForm();
+            closeLoginModal();
         }
         
-        if (!validateForm()) return;
+        setIsSubmitting(false);
+    };
 
-        setSuccessMessage('');
+    const handleRegister = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
         
-        try {
-            if (isLogin) {
-                const success = await login(formData.username, formData.password);
-                // Only close modal on successful login
-                if (success) {
-                    closeLoginModal();
-                }
-            } else {
-                const response = await register(formData.username, formData.email, formData.password);
-                if (response && response.requiresVerification) {
-                    setSuccessMessage('Registration successful! Please check your email to verify your account before logging in.');
-                    setFormData({
-                        username: '',
-                        email: '',
-                        password: '',
-                        confirmPassword: ''
-                    });
-                    // Don't close modal, but switch to login view after a delay
-                    setTimeout(() => {
-                        setIsLogin(true);
-                    }, 3000);
-                }
-            }
-        } catch (error) {
-            console.error('Auth error:', error);
-            // Don't close modal on error
-            setLocalError(error.message || 'An error occurred');
+        const result = await register(registerUsername, registerEmail, registerPassword);
+        if (result?.requiresVerification) {
+            setVerificationSent(true);
+            resetForm();
         }
+        
+        setIsSubmitting(false);
     };
 
     const handleClose = () => {
+        resetForm();
         closeLoginModal();
-        // Reset form state
-        setFormData({
-            username: '',
-            email: '',
-            password: '',
-            confirmPassword: ''
-        });
-        setIsLogin(true);
-        setLocalError('');
-        setError(null);
-        setSuccessMessage('');
+    };
+
+    const resetForm = () => {
+        setLoginUsername('');
+        setLoginPassword('');
+        setRegisterUsername('');
+        setRegisterEmail('');
+        setRegisterPassword('');
+        setVerificationSent(false);
+        setMode('login');
     };
 
     return (
@@ -207,16 +194,12 @@ const AuthModal = () => {
 
                     <Box 
                         component="form" 
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleSubmit();
-                        }}
+                        onSubmit={mode === 'login' ? handleLogin : handleRegister}
                         noValidate
                         sx={{ mt: 2 }}
                     >
                         <Typography variant="h5" sx={{ mb: 3, textAlign: 'center' }}>
-                            {isLogin ? 'Welcome Back!' : 'Create Account'}
+                            {mode === 'login' ? 'Welcome Back!' : 'Create Account'}
                         </Typography>
 
                         {displayError && (
@@ -240,21 +223,21 @@ const AuthModal = () => {
                                 fullWidth
                                 label="Username"
                                 name="username"
-                                value={formData.username}
-                                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                value={mode === 'login' ? loginUsername : registerUsername}
+                                onChange={(e) => mode === 'login' ? setLoginUsername(e.target.value) : setRegisterUsername(e.target.value)}
                                 InputProps={{
                                     startAdornment: <PersonIcon sx={{ mr: 1, color: 'grey.500' }} />
                                 }}
                             />
 
-                            {!isLogin && (
+                            {mode === 'register' && (
                                 <StyledTextField
                                     fullWidth
                                     label="Email"
                                     name="email"
                                     type="email"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    value={registerEmail}
+                                    onChange={(e) => setRegisterEmail(e.target.value)}
                                     InputProps={{
                                         startAdornment: <EmailIcon sx={{ mr: 1, color: 'grey.500' }} />
                                     }}
@@ -266,21 +249,21 @@ const AuthModal = () => {
                                 label="Password"
                                 name="password"
                                 type="password"
-                                value={formData.password}
-                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                value={mode === 'login' ? loginPassword : registerPassword}
+                                onChange={(e) => mode === 'login' ? setLoginPassword(e.target.value) : setRegisterPassword(e.target.value)}
                                 InputProps={{
                                     startAdornment: <LockIcon sx={{ mr: 1, color: 'grey.500' }} />
                                 }}
                             />
 
-                            {!isLogin && (
+                            {mode === 'register' && (
                                 <StyledTextField
                                     fullWidth
                                     label="Confirm Password"
                                     name="confirmPassword"
                                     type="password"
-                                    value={formData.confirmPassword}
-                                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                    value={registerPassword}
+                                    onChange={(e) => setRegisterPassword(e.target.value)}
                                     InputProps={{
                                         startAdornment: <LockIcon sx={{ mr: 1, color: 'grey.500' }} />
                                     }}
@@ -291,26 +274,21 @@ const AuthModal = () => {
                                 type="submit"
                                 variant="contained"
                                 fullWidth
-                                disabled={authLoading}
+                                disabled={isSubmitting}
                                 sx={{ mt: 2 }}
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleSubmit();
-                                }}
                             >
-                                {authLoading ? (
+                                {isSubmitting ? (
                                     <CircularProgress size={24} color="inherit" />
                                 ) : (
-                                    isLogin ? 'Login' : 'Register'
+                                    mode === 'login' ? 'Login' : 'Register'
                                 )}
                             </Button>
 
                             <Button
-                                onClick={() => setIsLogin(!isLogin)}
+                                onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
                                 sx={{ mt: 1 }}
                             >
-                                {isLogin ? "Don't have an account? Register" : 'Already have an account? Login'}
+                                {mode === 'login' ? "Don't have an account? Register" : 'Already have an account? Login'}
                             </Button>
                         </Box>
                     </Box>
