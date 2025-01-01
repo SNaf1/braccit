@@ -5,5 +5,6 @@ const eventController = require('../controllers/eventController');
 
 router.post('/:communityId/events', protect, eventController.createEvent);
 router.get('/:communityId/events', protect, eventController.getCommunityEvents);
+router.get('/events/:eventId', protect, eventController.getEventDetails);
 
 module.exports = router;

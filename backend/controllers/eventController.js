@@ -1,44 +1,27 @@
 const Event = require('../models/Event');
-const Community = require('../models/Community');
 
-const createEvent = async (req, res) => {
+// Get event details
+const getEventDetails = async (req, res) => {
     try {
-        const { title, description, startTime } = req.body;
-        const community = await Community.findById(req.params.communityId);
-
-        if (!community) {
-            return res.status(404).json({ error: 'Community not found' });
+        const event = await Event.findById(req.params.eventId)
+            .populate('community', 'name')
+            .populate('createdBy', 'username');
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
         }
 
-        if (!community.admins.includes(req.user._id)) {
-            return res.status(403).json({ error: 'Not authorized' });
-        }
+        // Assuming you have a way to determine the users who are going to the event
+        const going = []; // Replace with actual logic to get users going to the event
 
-        const event = new Event({
-            title,
-            description,
-            startTime,
-            community: community._id,
-            createdBy: req.user._id,
-        });
-
-        await event.save();
-        res.status(201).json(event);
+        res.json({ ...event.toObject(), going });
     } catch (error) {
-        res.status(500).json({ error: 'Error creating event' });
-    }
-};
-
-const getCommunityEvents = async (req, res) => {
-    try {
-        const events = await Event.find({ community: req.params.communityId }).sort({ startTime: 1 });
-        res.json(events);
-    } catch (error) {
-        res.status(500).json({ error: 'Error fetching events' });
+        console.error('Error fetching event details:', error);
+        res.status(500).json({ error: 'Error fetching event details' });
     }
 };
 
 module.exports = {
     createEvent,
     getCommunityEvents,
+    getEventDetails,
 };

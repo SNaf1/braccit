@@ -14,11 +14,13 @@ import {
     CircularProgress,
     Alert,
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import axios from '../../utils/axios';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Event = ({ communityId }) => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -117,7 +119,11 @@ const Event = ({ communityId }) => {
             </Dialog>
             <List>
                 {events.map((event) => (
-                    <ListItem key={event._id}>
+                    <ListItem 
+                        key={event._id} 
+                        button 
+                        onClick={() => navigate(`/event/${event._id}`)}
+                    >
                         <ListItemText
                             primary={event.title}
                             secondary={`Starts at: ${new Date(event.startTime).toLocaleString()}`}
