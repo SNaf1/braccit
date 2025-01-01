@@ -61,14 +61,14 @@ const prerequisites = {
     },
 
     // Semester 3
-    ENG103: {
+    BNG103: {
         semester: 3,
         type: courseTypes.GEN_ED,
         hardPrereqs: [],
         softPrereqs: [],
         fullChain: []
     },
-    'DEV/EMB101': {
+    EMB101: {
         semester: 3,
         type: courseTypes.GEN_ED,
         hardPrereqs: [],
@@ -108,9 +108,9 @@ const prerequisites = {
     CSE250: {
         semester: 4,
         type: courseTypes.PROGRAM_CORE,
-        hardPrereqs: [],
+        hardPrereqs: ['CSE111'],
         softPrereqs: ['PHY112'],
-        fullChain: []
+        fullChain: ['CSE111', 'CSE110']
     },
 
     // Semester 5
@@ -133,7 +133,14 @@ const prerequisites = {
         type: courseTypes.PROGRAM_CORE,
         hardPrereqs: ['CSE250'],
         softPrereqs: [],
-        fullChain: ['CSE250']
+        fullChain: ['CSE250', 'CSE111', 'CSE110']
+    },
+    CSE330: {
+        semester: 5,
+        type: courseTypes.PROGRAM_CORE,
+        hardPrereqs: ['CSE230', 'CSE220'],
+        softPrereqs: [],
+        fullChain: ['CSE230', 'CSE220', 'CSE111', 'CSE110']
     },
 
     // Semester 6
@@ -144,19 +151,12 @@ const prerequisites = {
         softPrereqs: [],
         fullChain: ['CSE221', 'CSE220', 'CSE111', 'CSE110']
     },
-    CSE330: {
-        semester: 6,
-        type: courseTypes.PROGRAM_CORE,
-        hardPrereqs: ['MAT216'],
-        softPrereqs: [],
-        fullChain: ['MAT216', 'MAT120', 'MAT110']
-    },
     CSE260: {
         semester: 6,
         type: courseTypes.PROGRAM_CORE,
         hardPrereqs: ['CSE251'],
         softPrereqs: [],
-        fullChain: ['CSE251', 'CSE250']
+        fullChain: ['CSE251', 'CSE250', 'CSE111', 'CSE110']
     },
 
     // Semester 7
@@ -186,7 +186,7 @@ const prerequisites = {
         type: courseTypes.PROGRAM_CORE,
         hardPrereqs: ['CSE251'],
         softPrereqs: [],
-        fullChain: ['CSE251', 'CSE250']
+        fullChain: ['CSE251', 'CSE250', 'CSE111', 'CSE110']
     },
 
     // Semester 8
@@ -232,7 +232,7 @@ const prerequisites = {
         type: courseTypes.PROGRAM_CORE,
         hardPrereqs: ['CSE260'],
         softPrereqs: [],
-        fullChain: ['CSE260', 'CSE251', 'CSE250']
+        fullChain: ['CSE260', 'CSE251', 'CSE250', 'CSE111', 'CSE110']
     },
 
     // Semester 10
@@ -278,7 +278,7 @@ const prerequisites = {
         type: courseTypes.PROGRAM_CORE,
         hardPrereqs: ['CSE260'],
         softPrereqs: [],
-        fullChain: ['CSE260', 'CSE251', 'CSE250']
+        fullChain: ['CSE260', 'CSE251', 'CSE250', 'CSE111', 'CSE110']
     }
 };
 

@@ -1,34 +1,54 @@
 const Course = require('../models/Course');
 const User = require('../models/User');
-const { prerequisites, courseLoadRules, courseTypes } = require('../data/prerequisites');
-const { trackDegreeProgress, suggestGenEdElectives } = require('../utils/degreeProgress');
-const { degreePlan } = require('../data/degreePlan');
+const StudentCourse = require('../models/studentCourse');
+const { prerequisites, courseTypes } = require('../data/prerequisites');
+const { degreePlan, isRequiredCourse } = require('../data/degreePlan');
 
 // Helper function to check if prerequisites are met
-const checkPrerequisites = (course, completedCourses) => {
-    const coursePrereqs = prerequisites[course.code];
+const checkPrerequisites = (courseCode, completedCourses) => {
+    const coursePrereqs = prerequisites[courseCode];
     if (!coursePrereqs) return true;
 
-    return coursePrereqs.hardPrereqs.every(prereq => 
+    // Check hard prerequisites
+    const hardPrereqsMet = coursePrereqs.hardPrereqs.every(prereq => 
         completedCourses.includes(prereq)
     );
+
+    // Check soft prerequisites
+    const softPrereqsMet = coursePrereqs.softPrereqs.length === 0 || 
+        coursePrereqs.softPrereqs.some(prereq => completedCourses.includes(prereq));
+
+    return hardPrereqsMet && softPrereqsMet;
 };
 
-// Helper function to get maximum allowed courses based on CGPA
-const getMaxCourses = (cgpa) => {
-    if (cgpa >= courseLoadRules.maximum.minCGPA) {
-        return courseLoadRules.maximum.maxCourses;
-    } else if (cgpa >= courseLoadRules.extended.minCGPA) {
-        return courseLoadRules.extended.maxCourses;
+// Helper function to get course load options based on CGPA
+const getCourseLoadOptions = (cgpa) => {
+    if (cgpa >= 3.8) {
+        return {
+            minCourses: 4,
+            maxCourses: 5,
+            suggestBoth: true
+        };
     }
-    return courseLoadRules.regular.maxCourses;
-};
-
-// Get first semester courses
-const getFirstSemesterCourses = () => {
-    return Object.entries(prerequisites)
-        .filter(([_, info]) => info.semester === 1)
-        .map(([code]) => code);
+    if (cgpa >= 3.5) {
+        return {
+            minCourses: 4,
+            maxCourses: 4,
+            suggestBoth: false
+        };
+    }
+    if (cgpa >= 3.0) {
+        return {
+            minCourses: 3,
+            maxCourses: 4,
+            suggestBoth: true
+        };
+    }
+    return {
+        minCourses: 3,
+        maxCourses: 3,
+        suggestBoth: false
+    };
 };
 
 // Get course suggestions
@@ -38,106 +58,188 @@ const getCourseSuggestions = async (req, res) => {
             return res.status(401).json({ error: 'User not authenticated' });
         }
 
-        const user = await User.findById(req.user._id)
-            .populate('completedCourses')
-            .populate('currentCourses');
+        // Get student's course history
+        const studentCourses = await StudentCourse.find({ userId: req.user._id })
+            .sort({ createdAt: -1 });
 
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+        // Get all completed courses
+        const completedCourses = studentCourses.reduce((acc, semester) => {
+            return [...acc, ...semester.courseCodes];
+        }, []);
+
+        console.log('Completed courses:', completedCourses);
+
+        // Get latest CGPA and calculate current semester
+        const latestCGPA = studentCourses.length > 0 ? studentCourses[0].cgpa : 0;
+        const currentSemester = studentCourses.length > 0 ? studentCourses.length + 1 : 1;
+
+        console.log('Current semester:', currentSemester);
+        console.log('CGPA:', latestCGPA);
+
+        // Special handling for third semester
+        if (currentSemester === 3) {
+            const thirdSemesterCourses = ['BNG103', 'EMB101', 'ENG102', 'HUM103'];
+            const remainingCourses = thirdSemesterCourses.filter(code => !completedCourses.includes(code));
+            
+            console.log('Third semester remaining courses:', remainingCourses);
+
+            // Map courses to their full details
+            const allCourses = await Course.find({ code: { $in: remainingCourses } });
+            const coursesWithDetails = allCourses.map(course => {
+                const courseInfo = prerequisites[course.code];
+                return {
+                    ...course.toObject(),
+                    type: courseInfo.type || 'Unknown',
+                    semester: courseInfo.semester,
+                    isRequired: isRequiredCourse(course.code),
+                    prerequisites: courseInfo.hardPrereqs,
+                    softPrerequisites: courseInfo.softPrereqs
+                };
+            });
+
+            // Return only third semester courses
+            return res.json({
+                currentStatus: {
+                    cgpa: latestCGPA,
+                    currentSemester,
+                    completedCourses: completedCourses.length,
+                    totalCreditsCompleted: completedCourses.length * 3,
+                    totalEligibleCourses: coursesWithDetails.length,
+                    isThirdSemester: true
+                },
+                suggestedCourses: [{
+                    courseLoad: Math.min(remainingCourses.length, 4),
+                    courses: coursesWithDetails
+                }]
+            });
         }
 
-        // Get completed and current courses
-        const completedCourses = (user.completedCourses || []).map(course => course.code);
-        const currentCourses = (user.currentCourses || []).map(course => course.code);
-        const totalCompletedCredits = (user.completedCourses || []).reduce((sum, course) => sum + (course.credits || 0), 0);
+        // For other semesters, get course load options based on CGPA
+        const courseLoad = getCourseLoadOptions(latestCGPA);
+        console.log('Course load options:', courseLoad);
 
-        // Determine current semester based on completed credits
-        const currentSemester = Math.floor(totalCompletedCredits / 15) + 1;
-
-        // Get all active courses
+        // Get all courses
         const allCourses = await Course.find({ isActive: true });
+        console.log('Total courses found:', allCourses.length);
 
-        // Calculate max courses based on CGPA
-        const maxCourses = getMaxCourses(user.cgpa || 0);
-        const currentCourseCount = currentCourses.length;
+        // Get eligible courses based on prerequisites and semester
+        let eligibleCourses = allCourses
+            .filter(course => {
+                // Skip if already completed
+                if (completedCourses.includes(course.code)) {
+                    console.log(`${course.code} skipped: already completed`);
+                    return false;
+                }
 
-        // Get first semester courses if no courses completed
-        let suggestedCourses;
-        if (completedCourses.length === 0 && currentCourses.length === 0) {
-            // Get first semester course codes
-            const firstSemesterCourseCodes = getFirstSemesterCourses();
-            console.log('First semester course codes:', firstSemesterCourseCodes);
+                // Get course info from prerequisites
+                const courseInfo = prerequisites[course.code];
+                if (!courseInfo) {
+                    console.log(`${course.code} skipped: no prerequisite info`);
+                    return false;
+                }
 
-            // Get course details for first semester courses
-            suggestedCourses = allCourses
-                .filter(course => firstSemesterCourseCodes.includes(course.code))
-                .map(course => ({
+                // Allow courses from current semester and next semester
+                if (courseInfo.semester > currentSemester + 1) {
+                    console.log(`${course.code} skipped: semester ${courseInfo.semester} is too far ahead`);
+                    return false;
+                }
+
+                // Check prerequisites
+                const prereqsMet = checkPrerequisites(course.code, completedCourses);
+                if (!prereqsMet) {
+                    console.log(`${course.code} skipped: prerequisites not met`);
+                    return false;
+                }
+
+                console.log(`${course.code} is eligible: semester ${courseInfo.semester}, type ${courseInfo.type}`);
+                return true;
+            })
+            .map(course => {
+                const courseInfo = prerequisites[course.code];
+                return {
                     ...course.toObject(),
-                    type: prerequisites[course.code]?.type || 'Unknown',
-                    semester: 1
-                }))
-                .slice(0, maxCourses);
+                    type: courseInfo.type || 'Unknown',
+                    semester: courseInfo.semester,
+                    isRequired: isRequiredCourse(course.code),
+                    prerequisites: courseInfo.hardPrereqs,
+                    softPrerequisites: courseInfo.softPrereqs
+                };
+            })
+            .sort((a, b) => {
+                // Sort by semester first
+                if (a.semester !== b.semester) {
+                    return a.semester - b.semester;
+                }
 
-            console.log('Suggested courses for first semester:', suggestedCourses);
+                // Then prioritize required courses
+                if (a.isRequired !== b.isRequired) {
+                    return b.isRequired - a.isRequired;
+                }
+
+                // Then prioritize by course type
+                const typeOrder = {
+                    [courseTypes.PROGRAM_CORE]: 1,
+                    [courseTypes.SCHOOL_CORE]: 2,
+                    [courseTypes.GEN_ED]: 3,
+                    [courseTypes.PROGRAM_ELECTIVE]: 4,
+                    [courseTypes.THESIS]: 5,
+                    'Unknown': 6
+                };
+                return typeOrder[a.type] - typeOrder[b.type];
+            });
+
+        // Generate course suggestions based on course load options
+        let suggestedCourses = [];
+        if (courseLoad.suggestBoth) {
+            // For minimum course load
+            const minCourses = eligibleCourses.slice(0, courseLoad.minCourses);
+            console.log(`Option 1 (${courseLoad.minCourses} courses):`, minCourses.map(c => c.code));
+            
+            // For maximum course load
+            const maxCourses = eligibleCourses.slice(0, courseLoad.maxCourses);
+            console.log(`Option 2 (${courseLoad.maxCourses} courses):`, maxCourses.map(c => c.code));
+
+            suggestedCourses = [
+                {
+                    courseLoad: courseLoad.minCourses,
+                    courses: minCourses
+                },
+                {
+                    courseLoad: courseLoad.maxCourses,
+                    courses: maxCourses
+                }
+            ];
         } else {
-            // Filter and sort courses for next semester
-            const nextSemester = currentSemester;
-            suggestedCourses = allCourses
-                .filter(course => {
-                    // Skip completed or current courses
-                    if (completedCourses.includes(course.code) || 
-                        currentCourses.includes(course.code)) {
-                        return false;
-                    }
-
-                    // Check prerequisites
-                    return checkPrerequisites(course, completedCourses);
-                })
-                .map(course => ({
-                    ...course.toObject(),
-                    type: prerequisites[course.code]?.type || 'Unknown',
-                    semester: prerequisites[course.code]?.semester || 0
-                }))
-                .sort((a, b) => {
-                    // Sort by semester first
-                    if (a.semester !== b.semester) {
-                        return a.semester - b.semester;
-                    }
-
-                    // Then prioritize required courses
-                    if (a.isRequired !== b.isRequired) {
-                        return b.isRequired - a.isRequired;
-                    }
-
-                    // Then prioritize by course type
-                    const typeOrder = {
-                        [courseTypes.PROGRAM_CORE]: 1,
-                        [courseTypes.SCHOOL_CORE]: 2,
-                        [courseTypes.GEN_ED]: 3,
-                        [courseTypes.PROGRAM_ELECTIVE]: 4,
-                        [courseTypes.THESIS]: 5,
-                        'Unknown': 6
-                    };
-                    return typeOrder[a.type] - typeOrder[b.type];
-                })
-                .slice(0, maxCourses - currentCourseCount);
+            const courses = eligibleCourses.slice(0, courseLoad.maxCourses);
+            console.log(`Single option (${courseLoad.maxCourses} courses):`, courses.map(c => c.code));
+            
+            suggestedCourses = [
+                {
+                    courseLoad: courseLoad.maxCourses,
+                    courses: courses
+                }
+            ];
         }
+
+        // Add current status information
+        const currentStatus = {
+            cgpa: latestCGPA,
+            currentSemester,
+            courseLoadOptions: courseLoad,
+            completedCourses: completedCourses.length,
+            totalCreditsCompleted: completedCourses.length * 3,
+            totalEligibleCourses: eligibleCourses.length,
+            isThirdSemester: false
+        };
 
         res.json({
-            currentStatus: {
-                cgpa: user.cgpa || 0,
-                currentCourseCount,
-                maxCourses,
-                canTakeMore: currentCourseCount < maxCourses,
-                currentSemester,
-                totalCredits: totalCompletedCredits
-            },
+            currentStatus,
             suggestedCourses
         });
 
     } catch (error) {
         console.error('Error in getCourseSuggestions:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Failed to get course suggestions',
             details: error.message
         });

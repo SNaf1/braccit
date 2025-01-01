@@ -8,7 +8,8 @@ import {
     Card,
     CardContent,
     Chip,
-    Tooltip
+    Tooltip,
+    Divider
 } from '@mui/material';
 import axios from '../../utils/axios';
 
@@ -54,6 +55,57 @@ function CourseSuggestions() {
         return `${semester}${suffix}`;
     };
 
+    const renderCourseCard = (course, index) => (
+        <Grid item xs={12} md={6} key={`${course._id}-${index}`}>
+            <Card>
+                <CardContent>
+                    <Typography variant="h6" component="div">
+                        {course.code}
+                    </Typography>
+                    <Typography variant="subtitle1" gutterBottom>
+                        {course.name}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                        <Chip 
+                            label={`${course.credits} Credits`} 
+                            size="small" 
+                            color="primary" 
+                            variant="outlined"
+                        />
+                        <Chip 
+                            label={course.type} 
+                            size="small" 
+                            color="secondary" 
+                            variant="outlined"
+                        />
+                        {course.isRequired && (
+                            <Chip 
+                                label="Required" 
+                                size="small" 
+                                color="error" 
+                                variant="outlined"
+                            />
+                        )}
+                    </Box>
+                    {(course.prerequisites?.length > 0 || course.softPrerequisites?.length > 0) && (
+                        <Box sx={{ mt: 1 }}>
+                            {course.prerequisites?.length > 0 && (
+                                <Typography variant="body2" color="text.secondary">
+                                    Prerequisites: {course.prerequisites.join(', ')}
+                                </Typography>
+                            )}
+                            {course.softPrerequisites?.length > 0 && (
+                                <Typography variant="body2" color="text.secondary">
+                                    Recommended Prerequisites: {course.softPrerequisites.join(', ')}
+                                </Typography>
+                            )}
+                        </Box>
+                    )}
+                </CardContent>
+            </Card>
+        </Grid>
+    );
+
     return (
         <Box sx={{ mt: 2 }}>
             {loading ? (
@@ -82,63 +134,34 @@ function CourseSuggestions() {
                         <Typography variant="h6" gutterBottom>
                             Suggested Courses - {getSemesterDisplay(currentStatus?.currentSemester)} Semester
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
                             These courses are recommended based on your current semester and completed courses.
                         </Typography>
+                        {currentStatus?.courseLoadOptions && (
+                            <Typography variant="body2" color="text.secondary">
+                                Based on your CGPA ({currentStatus.cgpa.toFixed(2)}), you can take{' '}
+                                {currentStatus.courseLoadOptions.suggestBoth 
+                                    ? `${currentStatus.courseLoadOptions.min} to ${currentStatus.courseLoadOptions.max} courses`
+                                    : `${currentStatus.courseLoadOptions.max} courses`
+                                } this semester.
+                            </Typography>
+                        )}
                     </Box>
-                    <Grid container spacing={2}>
-                        {suggestions.map((course) => (
-                            <Grid item xs={12} md={6} key={course.code}>
-                                <Card>
-                                    <CardContent>
-                                        <Typography variant="h6" component="div">
-                                            {course.code}
-                                        </Typography>
-                                        <Typography variant="subtitle1" gutterBottom>
-                                            {course.name}
-                                        </Typography>
-                                       
-                                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                                            <Chip 
-                                                label={`${course.credits} Credits`}
-                                                color="primary"
-                                                size="small"
-                                            />
-                                            <Chip 
-                                                label={course.type}
-                                                color="secondary"
-                                                size="small"
-                                            />
-                                            {course.isRequired && (
-                                                <Chip 
-                                                    label="Required"
-                                                    color="error"
-                                                    size="small"
-                                                />
-                                            )}
-                                        </Box>
-                                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                                            {course.instructor && (
-                                                <Typography variant="caption" color="text.secondary" display="block">
-                                                    Instructor: {course.instructor}
-                                                </Typography>
-                                            )}
-                                            {course.sectionDetails && (
-                                                <Typography variant="caption" color="text.secondary" display="block">
-                                                    Section: {course.sectionDetails}
-                                                </Typography>
-                                            )}
-                                        </Box>
-                                        {course.prerequisites && course.prerequisites.length > 0 && (
-                                            <Typography variant="caption" color="text.secondary" display="block">
-                                                Prerequisites: {course.prerequisites.join(', ')}
-                                            </Typography>
-                                        )}
-                                    </CardContent>
-                                </Card>
+                    {suggestions.map((option, optionIndex) => (
+                        <Box key={`option-${optionIndex}`} sx={{ mb: 4 }}>
+                            <Typography variant="h6" color="primary" gutterBottom>
+                                Option {optionIndex + 1}: {option.courseLoad} Courses
+                            </Typography>
+                            <Grid container spacing={2}>
+                                {option.courses.map((course, courseIndex) => 
+                                    renderCourseCard(course, `${optionIndex}-${courseIndex}`)
+                                )}
                             </Grid>
-                        ))}
-                    </Grid>
+                            {optionIndex < suggestions.length - 1 && (
+                                <Divider sx={{ my: 3 }} />
+                            )}
+                        </Box>
+                    ))}
                 </>
             )}
         </Box>

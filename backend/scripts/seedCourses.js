@@ -1,146 +1,47 @@
 const mongoose = require('mongoose');
 const Course = require('../models/Course');
-const User = require('../models/User');
-const bcrypt = require('bcryptjs');
+const { prerequisites, courseTypes } = require('../data/prerequisites');
+const { degreePlan, getCourseCredits, isRequiredCourse } = require('../data/degreePlan');
 
-// Sample course data representing a Computer Science curriculum
-const courses = [
-    {
-        code: 'CSE101',
-        name: 'Introduction to Programming',
-        description: 'Basic programming concepts using Python',
-        credits: 3,
-        prerequisites: [],
-        semester: 1,
-        department: 'CSE'
-    },
-    {
-        code: 'CSE102',
-        name: 'Object Oriented Programming',
-        description: 'OOP concepts using Java',
-        credits: 3,
-        prerequisites: ['CSE101'],
-        semester: 2,
-        department: 'CSE'
-    },
-    {
-        code: 'MATH101',
-        name: 'Calculus I',
-        description: 'Introduction to differential calculus',
-        credits: 3,
-        prerequisites: [],
-        semester: 1,
-        department: 'MATH'
-    },
-    {
-        code: 'MATH102',
-        name: 'Calculus II',
-        description: 'Introduction to integral calculus',
-        credits: 3,
-        prerequisites: ['MATH101'],
-        semester: 2,
-        department: 'MATH'
-    },
-    {
-        code: 'CSE201',
-        name: 'Data Structures',
-        description: 'Fundamental data structures and algorithms',
-        credits: 4,
-        prerequisites: ['CSE102'],
-        semester: 3,
-        department: 'CSE'
-    },
-    {
-        code: 'CSE202',
-        name: 'Database Systems',
-        description: 'Introduction to database design and SQL',
-        credits: 3,
-        prerequisites: ['CSE102'],
-        semester: 3,
-        department: 'CSE'
-    },
-    {
-        code: 'CSE301',
-        name: 'Software Engineering',
-        description: 'Software development lifecycle and project management',
-        credits: 4,
-        prerequisites: ['CSE201', 'CSE202'],
-        semester: 4,
-        department: 'CSE'
-    },
-    {
-        code: 'CSE302',
-        name: 'Operating Systems',
-        description: 'OS concepts and system programming',
-        credits: 4,
-        prerequisites: ['CSE201'],
-        semester: 4,
-        department: 'CSE'
-    },
-    {
-        code: 'CSE401',
-        name: 'Machine Learning',
-        description: 'Introduction to ML algorithms and applications',
-        credits: 3,
-        prerequisites: ['CSE201', 'MATH102'],
-        semester: 5,
-        department: 'CSE'
-    }
-];
+// Convert prerequisites data to Course documents
+const courses = Object.entries(prerequisites).map(([code, info]) => ({
+    code,
+    name: getBanglaCourseName(code),  // Add proper names for courses
+    description: `${code} (${info.type})`,
+    credits: getCourseCredits(code),
+    semester: info.semester,
+    type: info.type,
+    isRequired: isRequiredCourse(code),
+    isActive: true,
+    department: code.match(/^[A-Z]+/)[0] // Extract department from course code (e.g., CSE from CSE110)
+}));
 
-// Sample student data
-const students = [
-    {
-        username: 'student1',
-        email: 'student1@example.com',
-        password: 'password123',
-        name: 'John Doe',
-        completedCourses: [
-            {
-                course: 'CSE101',
-                grade: 'A',
-                completedAt: new Date('2023-12-20')
-            },
-            {
-                course: 'MATH101',
-                grade: 'B+',
-                completedAt: new Date('2023-12-20')
-            }
-        ],
-        currentCourses: ['CSE102', 'MATH102']
-    },
-    {
-        username: 'student2',
-        email: 'student2@example.com',
-        password: 'password123',
-        name: 'Jane Smith',
-        completedCourses: [
-            {
-                course: 'CSE101',
-                grade: 'A+',
-                completedAt: new Date('2023-12-20')
-            },
-            {
-                course: 'CSE102',
-                grade: 'A',
-                completedAt: new Date('2023-12-20')
-            },
-            {
-                course: 'MATH101',
-                grade: 'A-',
-                completedAt: new Date('2023-12-20')
-            },
-            {
-                course: 'MATH102',
-                grade: 'B+',
-                completedAt: new Date('2023-12-20')
-            }
-        ],
-        currentCourses: ['CSE201', 'CSE202']
-    }
-];
+// Helper function to get proper course names
+function getBanglaCourseName(code) {
+    const courseNames = {
+        'BNG103': 'Bangla Language and Literature',
+        'CSE110': 'Programming Language I',
+        'CSE111': 'Programming Language II',
+        'CSE230': 'Discrete Mathematics',
+        'CSE220': 'Data Structures',
+        'CSE221': 'Algorithms',
+        'CSE250': 'Project Work I',
+        'CSE251': 'Project Work II',
+        'CSE330': 'Computer Organization and Architecture',
+        'PHY111': 'Physics I',
+        'PHY112': 'Physics II',
+        'MAT110': 'Mathematics I',
+        'MAT120': 'Mathematics II',
+        'MAT216': 'Probability and Statistics',
+        'ENG101': 'English Language I',
+        'ENG102': 'English Language II',
+        'EMB101': 'Development Studies',
+        'HUM103': 'History of Bangladesh'
+    };
+    return courseNames[code] || code;
+}
 
-const seedDatabase = async () => {
+async function seedDatabase() {
     try {
         // Connect to MongoDB
         const uri = "mongodb+srv://sadnanornob:dgZMISXUk2DlgOQk@test-db.essm8.mongodb.net/?retryWrites=true&w=majority&appName=test-db";
@@ -149,35 +50,32 @@ const seedDatabase = async () => {
             useUnifiedTopology: true
         });
         console.log('Connected to MongoDB');
-
-        // Clear existing data
+        
+        // Clear existing courses
         await Course.deleteMany({});
         console.log('Cleared existing courses');
-
-        // Insert courses
+        
+        // Insert new courses
         await Course.insertMany(courses);
-        console.log('Inserted sample courses');
-
-        // Clear existing student data
-        await User.deleteMany({ username: { $in: students.map(s => s.username) } });
-        console.log('Cleared existing student data');
-
-        // Insert students with hashed passwords
-        for (const student of students) {
-            const hashedPassword = await bcrypt.hash(student.password, 10);
-            await User.create({
-                ...student,
-                password: hashedPassword
-            });
-        }
-        console.log('Inserted sample student data');
-
+        console.log('Inserted new courses');
+        
+        // Log all inserted courses
+        const insertedCourses = await Course.find({});
+        console.log('Inserted courses:', insertedCourses.map(c => ({
+            code: c.code,
+            name: c.name,
+            semester: c.semester,
+            type: c.type,
+            isRequired: c.isRequired
+        })));
+        
+        await mongoose.disconnect();
         console.log('Database seeding completed successfully');
         process.exit(0);
     } catch (error) {
         console.error('Error seeding database:', error);
         process.exit(1);
     }
-};
+}
 
 seedDatabase();
