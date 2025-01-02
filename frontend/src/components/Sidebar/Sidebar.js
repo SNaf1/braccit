@@ -46,25 +46,15 @@ const Sidebar = () => {
         width: 280,
         flexShrink: 0,
         position: 'sticky',
-        top: 64, // Adjust based on your header height
+        top: 64,
         height: 'calc(100vh - 64px)',
         overflowY: 'auto',
-        backgroundColor: 'background.paper',
-        border: 1,
-        borderColor: 'divider',
-        '&::-webkit-scrollbar': {
-          width: '8px',
-        },
-        '&::-webkit-scrollbar-track': {
-          background: 'transparent',
-        },
-        '&::-webkit-scrollbar-thumb': {
-          backgroundColor: 'rgba(0,0,0,0.2)',
-          borderRadius: '4px',
-        },
+        backgroundColor: '#1a1a1b',
+        borderRight: '1px solid #343536',
+        color: '#d7dadc'
       }}
     >
-      <List sx={{ mt: 8 }}>
+      <List>
         <ListItem>
           <Button
             fullWidth
@@ -76,19 +66,19 @@ const Sidebar = () => {
             Create Post
           </Button>
         </ListItem>
-        
-        <ListItem sx={{ mt: 1 }}>
+
+        <ListItem>
           <Button
             fullWidth
             variant="outlined"
-            color="primary"
             startIcon={<AddIcon />}
             onClick={() => navigate('/create-community')}
-            sx={{ 
-              color: 'white',
-              borderColor: 'rgba(255, 255, 255, 0.5)',
+            sx={{
+              borderColor: '#2196f3',
+              color: '#2196f3',
               '&:hover': {
-                borderColor: 'white'
+                borderColor: '#1976d2',
+                backgroundColor: 'rgba(33, 150, 243, 0.08)'
               }
             }}
           >
@@ -96,46 +86,54 @@ const Sidebar = () => {
           </Button>
         </ListItem>
 
-        <Divider sx={{ my: 2, borderColor: 'rgba(255, 255, 255, 0.12)' }} />
-
-        <ListItem>
-          <Typography variant="subtitle1" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-            Your Communities
-          </Typography>
-        </ListItem>
-
-        {userCommunities.map((community) => (
-          <ListItem
-            key={community.name}
-            button
-            component={Link}
-            to={`/b/${community.name}`}
-            selected={location.pathname === `/b/${community.name}`}
-            sx={{
-              color: 'white',
-              '&.Mui-selected': {
-                bgcolor: 'rgba(255, 255, 255, 0.08)',
-                '&:hover': {
-                  bgcolor: 'rgba(255, 255, 255, 0.12)'
-                }
-              },
-              '&:hover': {
-                bgcolor: 'rgba(255, 255, 255, 0.04)'
-              }
-            }}
-          >
-            <ListItemIcon sx={{ color: 'white' }}>
-              {community.isPrivate ? <LockIcon /> : <PublicIcon />}
-            </ListItemIcon>
-            <ListItemText 
-              primary={community.name}
-              secondary={`${community.memberCount} members`}
-              secondaryTypographyProps={{
-                sx: { color: 'rgba(255, 255, 255, 0.7)' }
-              }}
-            />
-          </ListItem>
-        ))}
+        {user && userCommunities.length > 0 && (
+          <>
+            <Divider sx={{ my: 2, borderColor: '#343536' }} />
+            <ListItem>
+              <Typography variant="subtitle2" color="#818384">
+                YOUR COMMUNITIES
+              </Typography>
+            </ListItem>
+            {userCommunities.map((community) => (
+              <ListItem
+                key={community._id}
+                button
+                component={Link}
+                to={`/b/${community.name}`}
+                selected={location.pathname === `/b/${community.name}`}
+                sx={{
+                  '&.Mui-selected': {
+                    backgroundColor: 'rgba(33, 150, 243, 0.08)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(33, 150, 243, 0.12)'
+                    }
+                  },
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.04)'
+                  }
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  {community.isPrivate ? (
+                    <LockIcon sx={{ color: '#818384' }} />
+                  ) : (
+                    <PublicIcon sx={{ color: '#818384' }} />
+                  )}
+                </ListItemIcon>
+                <ListItemText 
+                  primary={`b/${community.name}`}
+                  secondary={`${community.memberCount || 0} member${community.memberCount === 1 ? '' : 's'}`}
+                  primaryTypographyProps={{ 
+                    sx: { color: '#d7dadc' }
+                  }}
+                  secondaryTypographyProps={{ 
+                    sx: { color: '#818384' }
+                  }}
+                />
+              </ListItem>
+            ))}
+          </>
+        )}
       </List>
     </Box>
   );

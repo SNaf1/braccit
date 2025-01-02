@@ -7,13 +7,20 @@ import {
     Typography,
     Box,
     Chip,
-    Avatar
+    Avatar,
+    CardActions
 } from '@mui/material';
 import { Group as GroupIcon } from '@mui/icons-material';
 
 const CommunityCard = ({ community }) => {
+    const displayMemberCount = () => {
+        if (community.memberCount === 0) return '0 members';
+        if (community.memberCount === 1) return '1 member';
+        return `${community.memberCount} members`;
+    };
+
     return (
-        <Card sx={{ mb: 2, width: '100%' }}>
+        <Card sx={{ mb: 2, backgroundColor: '#1a1a1b', color: 'white' }}>
             <CardActionArea component={Link} to={`/b/${community.name.toLowerCase().replace(/\s+/g, '')}`}>
                 <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -28,14 +35,14 @@ const CommunityCard = ({ community }) => {
                             <Typography variant="h6" component="div">
                                 {community.name}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                {community.members?.length || 0} members
+                            <Typography variant="body2" color="textSecondary">
+                                {displayMemberCount()}
                             </Typography>
                         </Box>
                     </Box>
                     
                     {community.description && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        <Typography variant="body2" color="textSecondary" sx={{ mb: 1, mt: 1, color: '#d7dadc' }}>
                             {community.description}
                         </Typography>
                     )}

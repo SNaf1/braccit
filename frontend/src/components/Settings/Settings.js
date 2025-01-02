@@ -18,7 +18,7 @@ import {
     Clear as ClearIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
-import axios from 'axios';
+import axios from '../../utils/axios';  // Updated import
 
 const Settings = () => {
     const { user } = useAuth();
@@ -63,22 +63,13 @@ const Settings = () => {
         }
 
         try {
-            const token = localStorage.getItem('token');
-            const config = {
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                }
-            };
+            console.log('Attempting password change...');
+            const res = await axios.put('/api/auth/change-password', {
+                oldPassword: passwordData.oldPassword,
+                newPassword: passwordData.newPassword
+            });
 
-            const res = await axios.put(
-                'http://localhost:5000/api/auth/change-password',
-                {
-                    oldPassword: passwordData.oldPassword,
-                    newPassword: passwordData.newPassword
-                },
-                config
-            );
+            console.log('Password change response:', res.data);
 
             setMessage({ type: 'success', text: 'Password updated successfully' });
             setPasswordData({
@@ -87,7 +78,11 @@ const Settings = () => {
                 confirmNewPassword: ''
             });
         } catch (err) {
-            console.error('Error:', err.response?.data);
+            console.error('Password change error:', {
+                status: err.response?.status,
+                data: err.response?.data,
+                error: err.message
+            });
             setMessage({
                 type: 'error',
                 text: err.response?.data?.error || 'Failed to change password'

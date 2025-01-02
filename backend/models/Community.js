@@ -40,6 +40,10 @@ const communitySchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    memberCount: {
+      type: Number,
+      default: 0
+    },
     pendingMembers: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -50,10 +54,6 @@ const communitySchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-    memberCount: {
-      type: Number,
-      default: 0,
-    },
   },
   {
     timestamps: true,
@@ -62,6 +62,14 @@ const communitySchema = new mongoose.Schema(
 
 // Add text index for search functionality
 communitySchema.index({ name: "text", description: "text" });
+
+// Middleware to update memberCount when members array changes
+communitySchema.pre('save', function(next) {
+  if (this.isModified('members')) {
+    this.memberCount = this.members.length;
+  }
+  next();
+});
 
 const Community = mongoose.model("Community", communitySchema);
 
