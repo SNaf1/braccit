@@ -15,6 +15,7 @@ import NotFound from './components/NotFound';
 import Home from './pages/Home';
 import UserProfile from './pages/UserProfile';
 import Routine from './pages/Routine';
+import Communities from './pages/Communities';
 import { AuthProvider } from './contexts/AuthContext';
 import VerifyEmail from './components/Auth/VerifyEmail';
 
@@ -72,6 +73,7 @@ function App() {
               }}>
                 <Routes>
                   <Route path="/" element={<Home />} />
+                  <Route path="/communities" element={<Communities />} />
                   <Route path="/user/:username" element={<UserProfile />} />
                   <Route path="/b/:name" element={<CommunityDetail />} />
                   <Route path="/b/:name/post/:postId" element={<PostDetail />} />
