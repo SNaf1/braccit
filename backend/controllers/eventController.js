@@ -1,175 +1,119 @@
 const Event = require('../models/Event');
 const Community = require('../models/Community');
 
-// Create event
-const createEvent = async (req, res) => {
+// Create a new event
+exports.createEvent = async (req, res) => {
     try {
-        const community = await Community.findById(req.params.communityId);
+        const { communityId } = req.params;
+        const { title, description, startDate } = req.body;
 
+        // Check if user is a member of the community
+        const community = await Community.findById(communityId);
         if (!community) {
             return res.status(404).json({ error: 'Community not found' });
         }
 
-        // Check if user is admin or owner to create event
-        if (!community.admins.includes(req.user.id) && community.owner !== req.user.id) {
-            return res.status(403).json({ error: 'Only admins and owners can create events' });
+        if (!community.members.includes(req.user._id)) {
+            return res.status(403).json({ error: 'You must be a member to create events' });
         }
 
         const event = new Event({
-            ...req.body,
-            community: req.params.communityId,
-            createdBy: req.user._id,
-            going: [] // Initialize empty going array
+            title,
+            description,
+            startDate: new Date(startDate),
+            community: communityId,
+            creator: req.user._id,
+            going: [req.user._id] // Creator automatically attends
         });
+
         await event.save();
-        res.status(201).json(event);
+        const savedEvent = await event.populate(['creator', 'going']);
+        res.status(201).json(savedEvent);
     } catch (error) {
-        console.error('Error creating event:', error);
-        res.status(500).json({ error: 'Error creating event' });
+        res.status(500).json({ error: error.message });
     }
 };
 
 // Get community events
-const getCommunityEvents = async (req, res) => {
+exports.getCommunityEvents = async (req, res) => {
     try {
-        const community = await Community.findById(req.params.communityId)
-            .populate('members', 'username')
-            .populate('admins', 'username');
-
-        if (!community) {
-            return res.status(404).json({ error: 'Community not found' });
-        }
-
-        // Allow access if user is a member, admin, or owner
-        const isMember = community.members.some(member => member._id.toString() === req.user.id);
-        const isAdmin = community.admins.some(admin => admin._id.toString() === req.user.id);
-        const isOwner = community.owner.toString() === req.user.id;
-
-        if (!isMember && !isAdmin && !isOwner) {
-            return res.status(403).json({ error: 'Access denied: Not a member of the community' });
-        }
-
-        const events = await Event.find({ community: req.params.communityId })
-            .populate('community', 'name')
-            .populate('createdBy', 'username')
+        const { communityId } = req.params;
+        const events = await Event.find({ community: communityId })
+            .populate('creator', 'username')
             .populate('going', 'username')
-            .sort({ startTime: 1 }); // Sort events by start time
-
-        // Add current user info to each event
-        const eventsWithUser = events.map(event => ({
-            ...event.toObject(),
-            currentUser: {
-                _id: req.user._id,
-                username: req.user.username
-            }
-        }));
-
-        res.json(eventsWithUser);
+            .sort({ startDate: 1 });
+        res.json(events);
     } catch (error) {
-        console.error('Error fetching community events:', error);
-        res.status(500).json({ error: 'Error fetching community events' });
+        res.status(500).json({ error: error.message });
     }
 };
 
 // Get event details
-const getEventDetails = async (req, res) => {
+exports.getEventDetails = async (req, res) => {
     try {
-        const event = await Event.findById(req.params.eventId)
-            .populate('community', 'name')
-            .populate('createdBy', 'username')
-            .populate('going', 'username');
+        const { eventId } = req.params;
+        const event = await Event.findById(eventId)
+            .populate('creator', 'username')
+            .populate('going', 'username')
+            .populate('community');
         
         if (!event) {
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        const community = await Community.findById(event.community);
+        // Add isGoing flag for current user
+        const response = event.toObject();
+        response.isGoing = event.going.some(user => user._id.toString() === req.user._id.toString());
         
-        if (!community) {
-            return res.status(404).json({ error: 'Community not found' });
-        }
-
-        // Check if user has access to the event
-        const isMember = community.members.includes(req.user.id);
-        const isAdmin = community.admins.includes(req.user.id);
-        const isOwner = community.owner.toString() === req.user.id;
-
-        if (!isMember && !isAdmin && !isOwner) {
-            return res.status(403).json({ error: 'Access denied: Not a member of the community' });
-        }
-
-        // Add current user info to response
-        const eventWithUser = {
-            ...event.toObject(),
-            currentUser: {
-                _id: req.user._id,
-                username: req.user.username
-            }
-        };
-
-        res.json(eventWithUser);
+        res.json(response);
     } catch (error) {
-        console.error('Error fetching event details:', error);
-        res.status(500).json({ error: 'Error fetching event details' });
+        res.status(500).json({ error: error.message });
     }
 };
 
-// Toggle going status for an event
-const toggleGoing = async (req, res) => {
+// Toggle going status
+exports.toggleGoing = async (req, res) => {
     try {
-        const event = await Event.findById(req.params.eventId)
-            .populate('community');
-
-        if (!event) {
-            return res.status(404).json({ error: 'Event not found' });
-        }
-
-        const community = await Community.findById(event.community._id);
+        const { eventId, communityId } = req.params;
+        
+        // First check if user is member of the community
+        const community = await Community.findById(communityId);
         if (!community) {
             return res.status(404).json({ error: 'Community not found' });
         }
 
-        // Check if user is a member
-        const isMember = community.members.includes(req.user.id);
-        const isAdmin = community.admins.includes(req.user.id);
-        const isOwner = community.owner.toString() === req.user.id;
-
-        if (!isMember && !isAdmin && !isOwner) {
-            return res.status(403).json({ error: 'You must be a member of the community to attend events' });
+        if (!community.members.includes(req.user._id)) {
+            return res.status(403).json({ error: 'You must be a member to attend events' });
         }
 
-        // Check if user is already going
-        const isGoing = event.going.includes(req.user._id);
+        let event = await Event.findById(eventId);
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
 
-        if (isGoing) {
-            // Remove user from going list
-            event.going = event.going.filter(userId => userId.toString() !== req.user._id.toString());
-        } else {
-            // Add user to going list
+        const userIdStr = req.user._id.toString();
+        const userIndex = event.going.findIndex(id => id.toString() === userIdStr);
+        
+        if (userIndex === -1) {
             event.going.push(req.user._id);
+        } else {
+            event.going.splice(userIndex, 1);
         }
 
         await event.save();
-
-        // Populate going list before sending response
-        await event.populate('going', 'username');
-
-        res.json({
-            going: event.going,
-            currentUser: {
-                _id: req.user._id,
-                username: req.user.username
-            }
-        });
+        
+        // Populate the going field before sending response
+        event = await Event.findById(eventId)
+            .populate('creator', 'username')
+            .populate('going', 'username');
+        
+        // Add isGoing flag for current user
+        const response = event.toObject();
+        response.isGoing = event.going.some(user => user._id.toString() === userIdStr);
+        
+        res.json(response);
     } catch (error) {
-        console.error('Error toggling going status:', error);
-        res.status(500).json({ error: 'Error updating attendance status' });
+        console.error('Toggle going error:', error);
+        res.status(500).json({ error: error.message });
     }
-};
-
-module.exports = {
-    createEvent,
-    getCommunityEvents,
-    getEventDetails,
-    toggleGoing,
 };

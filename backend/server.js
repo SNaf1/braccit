@@ -34,14 +34,16 @@ const searchRoutes = require('./routes/search');
 const userRoutes = require('./routes/users');
 const examRoutes = require('./routes/exam');
 const eventRoutes = require('./routes/event');
+const routineRoutes = require('./routes/routine');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/b', communityRoutes);
-app.use('/api/b', eventRoutes);
 app.use('/api/posts', postRoutes);
-app.use('/api/exam', examRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/exam', examRoutes);
+app.use('/api/b', eventRoutes);
+app.use('/api/routine', routineRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));

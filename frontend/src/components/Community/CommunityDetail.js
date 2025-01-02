@@ -320,11 +320,11 @@ const CommunityDetail = () => {
             )}
 
             {/* Community Events Section */}
-            <Box sx={{ mt: 3 }}>
+            <Box sx={{ mt: 4 }}>
               <Typography variant="h6" gutterBottom>
                 Community Events
               </Typography>
-              {community._id && <Event communityId={community._id} />}
+              <Event communityId={community._id} communityName={community.name} />
             </Box>
 
             {community.isAdmin && (

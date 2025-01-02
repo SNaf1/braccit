@@ -19,247 +19,309 @@ import { PersonAdd as PersonAddIcon, PersonRemove as PersonRemoveIcon } from '@m
 import axios from '../../utils/axios';
 
 const CountdownTimer = () => {
-    const { eventId } = useParams();
+    const { name: communityName, eventId } = useParams();
     const [timeLeft, setTimeLeft] = useState(null);
-    const [eventDetails, setEventDetails] = useState(null);
+    const [event, setEvent] = useState(null);
     const [attendees, setAttendees] = useState([]);
     const [isGoing, setIsGoing] = useState(false);
     const [error, setError] = useState('');
     const [showSnackbar, setShowSnackbar] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [communityId, setCommunityId] = useState(null);
+    const [currentTime, setCurrentTime] = useState(new Date("2025-01-02T18:15:02+06:00"));
 
-    // Fetch event details and attendees
+    // First fetch community ID from name
     useEffect(() => {
-        const fetchEventData = async () => {
+        const fetchCommunityId = async () => {
             try {
-                const eventResponse = await axios.get(`/api/b/events/${eventId}`);
-                setEventDetails(eventResponse.data);
-                
-                // Check if current user is going
-                const userIsGoing = eventResponse.data.going?.some(
-                    user => user._id === eventResponse.data.currentUser?._id
-                );
-                setIsGoing(userIsGoing);
-
-                // Set attendees directly from the populated going field
-                setAttendees(eventResponse.data.going || []);
+                const response = await axios.get(`/api/b/${communityName}`);
+                setCommunityId(response.data._id);
             } catch (error) {
-                console.error('Error fetching event:', error);
-                setError('Failed to load event details');
+                console.error('Error fetching community:', error);
+                setError('Failed to load community details');
             }
         };
-        fetchEventData();
-    }, [eventId]);
+        
+        if (communityName) {
+            fetchCommunityId();
+        }
+    }, [communityName]);
 
-    // Update countdown every second
     useEffect(() => {
-        if (!eventDetails?.startTime) return;
+        const fetchEventDetails = async () => {
+            if (!communityId || !eventId) return;
+
+            try {
+                const response = await axios.get(`/api/b/${communityId}/events/${eventId}`);
+                setEvent(response.data);
+                setIsGoing(response.data.isGoing);
+                setAttendees(response.data.going || []);
+                setError(null);
+            } catch (error) {
+                console.error('Error fetching event:', error);
+                setError(error.response?.data?.error || 'Failed to fetch event details');
+            }
+        };
+
+        fetchEventDetails();
+    }, [communityId, eventId]);
+
+    useEffect(() => {
+        if (!event?.startDate) return;
 
         const calculateTimeLeft = () => {
-            const now = new Date().getTime();
-            const eventTime = new Date(eventDetails.startTime).getTime();
-            const difference = eventTime - now;
+            const startTime = new Date(event.startDate).getTime();
+            const now = currentTime.getTime();
+            const difference = startTime - now;
 
             if (difference <= 0) {
                 setTimeLeft(null);
                 return;
             }
 
-            setTimeLeft({
-                days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-                hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-                minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
-                seconds: Math.floor((difference % (1000 * 60)) / 1000)
-            });
+            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+            setTimeLeft({ days, hours, minutes, seconds });
         };
 
         calculateTimeLeft();
-        const timer = setInterval(calculateTimeLeft, 1000);
-        return () => clearInterval(timer);
-    }, [eventDetails]);
+        const timer = setInterval(() => {
+            setCurrentTime(prevTime => {
+                const newTime = new Date(prevTime.getTime());
+                newTime.setSeconds(newTime.getSeconds() + 1);
+                return newTime;
+            });
+        }, 1000);
 
-    const handleToggleGoing = async () => {
+        return () => clearInterval(timer);
+    }, [event?.startDate, currentTime]);
+
+    const handleAttendance = async () => {
+        if (!communityId) return;
+
         try {
-            await axios.post(`/api/b/events/${eventId}/going`);
-            setIsGoing(!isGoing);
-            
-            // Fetch updated event details
-            const updatedEvent = await axios.get(`/api/b/events/${eventId}`);
-            setAttendees(updatedEvent.data.going || []);
-            
-            setSnackbarMessage(isGoing ? 'You are no longer attending' : 'You are now attending!');
+            const response = await axios.post(`/api/b/${communityId}/events/${eventId}/going`);
+            setIsGoing(response.data.isGoing);
+            setAttendees(response.data.going);
+            setSnackbarMessage(response.data.isGoing ? 'You are now attending' : 'You are no longer attending');
             setShowSnackbar(true);
+            setError(null);
         } catch (error) {
-            console.error('Error toggling attendance:', error);
-            setError('Failed to update attendance');
+            console.error('Error updating attendance:', error);
+            setError(error.response?.data?.error || 'Failed to update attendance status');
             setShowSnackbar(true);
         }
     };
 
-    if (!eventDetails) {
-        return null;
+    const renderCountdown = () => {
+        if (!timeLeft) {
+            return <Typography variant="h6" sx={{ color: '#ff4444' }}>Event has started!</Typography>;
+        }
+
+        return (
+            <Box sx={{ 
+                display: 'flex', 
+                gap: 3, 
+                justifyContent: 'center', 
+                mb: 3,
+                p: 4,
+                backgroundColor: '#1a237e',
+                borderRadius: 2,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.25)'
+            }}>
+                <Box sx={{ 
+                    textAlign: 'center',
+                    minWidth: 100,
+                    p: 2,
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    borderRadius: 1
+                }}>
+                    <Typography variant="h2" sx={{ 
+                        fontWeight: 'bold',
+                        color: '#fff',
+                        textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
+                    }}>
+                        {String(timeLeft.days).padStart(2, '0')}
+                    </Typography>
+                    <Typography sx={{ color: '#90caf9' }}>Days</Typography>
+                </Box>
+                <Box sx={{ 
+                    textAlign: 'center',
+                    minWidth: 100,
+                    p: 2,
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    borderRadius: 1
+                }}>
+                    <Typography variant="h2" sx={{ 
+                        fontWeight: 'bold',
+                        color: '#fff',
+                        textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
+                    }}>
+                        {String(timeLeft.hours).padStart(2, '0')}
+                    </Typography>
+                    <Typography sx={{ color: '#90caf9' }}>Hours</Typography>
+                </Box>
+                <Box sx={{ 
+                    textAlign: 'center',
+                    minWidth: 100,
+                    p: 2,
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    borderRadius: 1
+                }}>
+                    <Typography variant="h2" sx={{ 
+                        fontWeight: 'bold',
+                        color: '#fff',
+                        textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
+                    }}>
+                        {String(timeLeft.minutes).padStart(2, '0')}
+                    </Typography>
+                    <Typography sx={{ color: '#90caf9' }}>Minutes</Typography>
+                </Box>
+                <Box sx={{ 
+                    textAlign: 'center',
+                    minWidth: 100,
+                    p: 2,
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    borderRadius: 1
+                }}>
+                    <Typography variant="h2" sx={{ 
+                        fontWeight: 'bold',
+                        color: '#fff',
+                        textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
+                    }}>
+                        {String(timeLeft.seconds).padStart(2, '0')}
+                    </Typography>
+                    <Typography sx={{ color: '#90caf9' }}>Seconds</Typography>
+                </Box>
+            </Box>
+        );
+    };
+
+    if (error) {
+        return (
+            <Container>
+                <Alert severity="error">{error}</Alert>
+            </Container>
+        );
+    }
+
+    if (!event) {
+        return (
+            <Container>
+                <Typography>Loading event details...</Typography>
+            </Container>
+        );
     }
 
     return (
-        <Container maxWidth="md">
-            <Paper elevation={3} sx={{ p: 4, mt: 3, borderRadius: 2 }}>
-                {/* Event Title */}
-                <Box sx={{ mb: 4, borderBottom: 1, borderColor: 'divider', pb: 2 }}>
-                    <Typography 
-                        variant="h3" 
-                        component="h1" 
-                        gutterBottom 
-                        sx={{ 
-                            color: 'primary.main', 
-                            fontWeight: 'bold',
-                            textAlign: 'center'
-                        }}
-                    >
-                        {eventDetails.title}
-                    </Typography>
-                </Box>
-
-                {/* Event Description */}
-                <Box sx={{ 
-                    mb: 4, 
-                    p: 3, 
-                    bgcolor: 'background.paper',
-                    borderRadius: 2,
-                    border: 1,
-                    borderColor: 'divider'
+        <Container>
+            <Paper elevation={3} sx={{ 
+                p: 4, 
+                mt: 3, 
+                backgroundColor: '#121212',
+                color: '#fff',
+                borderRadius: 2
+            }}>
+                <Typography variant="h3" gutterBottom sx={{ 
+                    color: '#64b5f6',
+                    fontWeight: 'bold',
+                    mb: 3,
+                    textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
                 }}>
-                    <Typography 
-                        variant="h6" 
-                        gutterBottom 
-                        sx={{ color: 'primary.main', mb: 2 }}
-                    >
+                    {event.title}
+                </Typography>
+
+                <Box sx={{ mb: 4 }}>
+                    <Typography variant="h6" sx={{ color: '#90caf9', mb: 1 }}>
                         About This Event
                     </Typography>
-                    <Typography 
-                        variant="body1" 
-                        paragraph 
-                        sx={{ 
-                            fontSize: '1.1rem', 
-                            color: 'text.secondary',
-                            lineHeight: 1.8,
-                            whiteSpace: 'pre-line'
-                        }}
-                    >
-                        {eventDetails.description}
+                    <Typography paragraph sx={{ color: '#e0e0e0' }}>
+                        {event.description}
                     </Typography>
                 </Box>
 
-                {/* Timer Section */}
-                <Box sx={{ 
-                    bgcolor: 'background.paper', 
-                    p: 3, 
-                    borderRadius: 1,
-                    border: 1,
-                    borderColor: 'divider'
-                }}>
-                    <Typography variant="h6" gutterBottom sx={{ color: 'primary.main' }}>
+                <Box sx={{ mb: 4 }}>
+                    <Typography variant="h6" sx={{ color: '#90caf9', mb: 1 }}>
                         Event Time
                     </Typography>
-                    <Typography variant="body1" sx={{ mb: 2, fontWeight: 'medium' }}>
-                        {new Date(eventDetails.startTime).toLocaleString()}
+                    <Typography sx={{ color: '#e0e0e0' }}>
+                        {new Date(event.startDate).toLocaleString()}
                     </Typography>
+                </Box>
 
-                    <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', mt: 2 }}>
+                <Box sx={{ mb: 4 }}>
+                    <Typography variant="h6" sx={{ color: '#90caf9', mb: 2 }}>
                         Time Until Event
                     </Typography>
-                    <Box sx={{ 
-                        display: 'flex', 
-                        gap: 2, 
-                        flexWrap: 'wrap',
-                        justifyContent: 'center',
-                        p: 2,
-                        bgcolor: 'primary.light',
+                    {renderCountdown()}
+                </Box>
+
+                <Box sx={{ mb: 4 }}>
+                    <Typography variant="h6" sx={{ color: '#90caf9', mb: 2 }}>
+                        Attendees ({attendees.length})
+                    </Typography>
+                    <List sx={{ 
+                        bgcolor: 'rgba(255,255,255,0.05)',
                         borderRadius: 1,
-                        color: 'white'
+                        p: 1
                     }}>
-                        {!timeLeft ? (
-                            <Typography variant="h5">Event has started!</Typography>
-                        ) : (
-                            <>
-                                <Box sx={{ textAlign: 'center', minWidth: '80px' }}>
-                                    <Typography variant="h4">{String(timeLeft.days).padStart(2, '0')}</Typography>
-                                    <Typography variant="body2">Days</Typography>
-                                </Box>
-                                <Box sx={{ textAlign: 'center', minWidth: '80px' }}>
-                                    <Typography variant="h4">{String(timeLeft.hours).padStart(2, '0')}</Typography>
-                                    <Typography variant="body2">Hours</Typography>
-                                </Box>
-                                <Box sx={{ textAlign: 'center', minWidth: '80px' }}>
-                                    <Typography variant="h4">{String(timeLeft.minutes).padStart(2, '0')}</Typography>
-                                    <Typography variant="body2">Minutes</Typography>
-                                </Box>
-                                <Box sx={{ textAlign: 'center', minWidth: '80px' }}>
-                                    <Typography variant="h4">{String(timeLeft.seconds).padStart(2, '0')}</Typography>
-                                    <Typography variant="body2">Seconds</Typography>
-                                </Box>
-                            </>
-                        )}
-                    </Box>
+                        {attendees.map((attendee, index) => (
+                            <React.Fragment key={attendee._id}>
+                                <ListItem>
+                                    <ListItemAvatar>
+                                        <Avatar sx={{ 
+                                            bgcolor: '#1a237e',
+                                            color: '#fff'
+                                        }}>
+                                            {attendee.username[0].toUpperCase()}
+                                        </Avatar>
+                                    </ListItemAvatar>
+                                    <ListItemText 
+                                        primary={attendee.username} 
+                                        sx={{ color: '#e0e0e0' }}
+                                    />
+                                </ListItem>
+                                {index < attendees.length - 1 && (
+                                    <Divider sx={{ bgcolor: 'rgba(255,255,255,0.1)' }} />
+                                )}
+                            </React.Fragment>
+                        ))}
+                    </List>
                 </Box>
 
-                {/* Attendance Section */}
-                <Box sx={{ mt: 4 }}>
-                    <Box sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        mb: 2
-                    }}>
-                        <Typography variant="h6" sx={{ color: 'primary.main' }}>
-                            Attendees ({attendees.length})
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            color={isGoing ? "error" : "primary"}
-                            onClick={handleToggleGoing}
-                            startIcon={isGoing ? <PersonRemoveIcon /> : <PersonAddIcon />}
-                        >
-                            {isGoing ? "Not Going" : "Going"}
-                        </Button>
-                    </Box>
-
-                    <Paper elevation={1} sx={{ p: 2, bgcolor: 'background.paper' }}>
-                        {attendees.length > 0 ? (
-                            <List>
-                                {attendees.map((attendee, index) => (
-                                    <React.Fragment key={attendee._id}>
-                                        <ListItem>
-                                            <ListItemAvatar>
-                                                <Avatar>{attendee.username[0].toUpperCase()}</Avatar>
-                                            </ListItemAvatar>
-                                            <ListItemText 
-                                                primary={attendee.username}
-                                                secondary={attendee._id === eventDetails.currentUser?._id ? '(You)' : ''}
-                                            />
-                                        </ListItem>
-                                        {index < attendees.length - 1 && <Divider />}
-                                    </React.Fragment>
-                                ))}
-                            </List>
-                        ) : (
-                            <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                                No attendees yet. Be the first to join!
-                            </Typography>
-                        )}
-                    </Paper>
-                </Box>
+                <Button
+                    variant="contained"
+                    onClick={handleAttendance}
+                    startIcon={isGoing ? <PersonRemoveIcon /> : <PersonAddIcon />}
+                    sx={{
+                        width: '100%',
+                        p: 1.5,
+                        bgcolor: isGoing ? '#d32f2f' : '#1a237e',
+                        '&:hover': {
+                            bgcolor: isGoing ? '#b71c1c' : '#0d47a1'
+                        },
+                        textTransform: 'none',
+                        fontSize: '1.1rem'
+                    }}
+                >
+                    {isGoing ? 'Cancel Attendance' : 'Attend Event'}
+                </Button>
             </Paper>
 
             <Snackbar
                 open={showSnackbar}
-                autoHideDuration={3000}
+                autoHideDuration={6000}
                 onClose={() => setShowSnackbar(false)}
             >
                 <Alert 
                     onClose={() => setShowSnackbar(false)} 
                     severity={error ? "error" : "success"}
+                    sx={{ width: '100%' }}
                 >
-                    {error || snackbarMessage}
+                    {snackbarMessage}
                 </Alert>
             </Snackbar>
         </Container>

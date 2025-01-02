@@ -8,7 +8,7 @@ router.post('/:communityId/events', protect, eventController.createEvent);
 router.get('/:communityId/events', protect, eventController.getCommunityEvents);
 
 // Individual event routes
-router.get('/events/:eventId', protect, eventController.getEventDetails);
-router.post('/events/:eventId/going', protect, eventController.toggleGoing);
+router.get('/:communityId/events/:eventId', protect, eventController.getEventDetails);
+router.post('/:communityId/events/:eventId/going', protect, eventController.toggleGoing);
 
 module.exports = router;

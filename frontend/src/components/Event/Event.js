@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from '../../utils/axios';
 import { useAuth } from '../../contexts/AuthContext';
 
-const Event = ({ communityId }) => {
+const Event = ({ communityId, communityName }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [events, setEvents] = useState([]);
@@ -28,7 +28,7 @@ const Event = ({ communityId }) => {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
-        startTime: '',
+        startDate: ''
     });
 
     useEffect(() => {
@@ -61,7 +61,7 @@ const Event = ({ communityId }) => {
         try {
             await axios.post(`/api/b/${communityId}/events`, formData);
             setOpen(false);
-            setFormData({ title: '', description: '', startTime: '' });
+            setFormData({ title: '', description: '', startDate: '' });
             const response = await axios.get(`/api/b/${communityId}/events`);
             setEvents(response.data);
         } catch (err) {
@@ -105,10 +105,10 @@ const Event = ({ communityId }) => {
                     />
                     <TextField
                         fullWidth
-                        label="Start Time"
-                        name="startTime"
+                        label="Start Date"
+                        name="startDate"
                         type="datetime-local"
-                        value={formData.startTime}
+                        value={formData.startDate}
                         onChange={handleChange}
                         margin="normal"
                         InputLabelProps={{
@@ -128,11 +128,11 @@ const Event = ({ communityId }) => {
                     <ListItem 
                         key={event._id} 
                         button 
-                        onClick={() => navigate(`/event/${event._id}`)}
+                        onClick={() => navigate(`/b/${communityName}/events/${event._id}`)}
                     >
                         <ListItemText
                             primary={event.title}
-                            secondary={`Starts at: ${new Date(event.startTime).toLocaleString()}`}
+                            secondary={`Starts at: ${new Date(event.startDate).toLocaleString()}`}
                         />
                     </ListItem>
                 ))}

@@ -4,33 +4,32 @@ const eventSchema = new mongoose.Schema({
     title: {
         type: String,
         required: true,
+        trim: true
     },
     description: {
         type: String,
-        required: true,
+        required: true
     },
-    startTime: {
+    startDate: {
         type: Date,
-        required: true,
+        required: true
     },
     community: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Community',
-        required: true,
+        required: true
     },
-    createdBy: {
+    creator: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        required: true
     },
     going: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }]
 }, {
-    timestamps: true,
+    timestamps: true
 });
 
-const Event = mongoose.model('Event', eventSchema);
-
-module.exports = Event;
+module.exports = mongoose.model('Event', eventSchema);

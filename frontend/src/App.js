@@ -83,6 +83,9 @@ function App() {
                   <Route path="/create-post" element={<CreatePost />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/search" element={<SearchResults />} />
+                  <Route path="/verify-email/:token" element={<VerifyEmail />} />
+                  <Route path="/routine" element={<Routine />} />
+                  <Route path="/b/:name/events/:eventId" element={<CountdownTimer />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Box>
