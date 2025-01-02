@@ -28,7 +28,39 @@ const CountdownTimer = () => {
     const [showSnackbar, setShowSnackbar] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [communityId, setCommunityId] = useState(null);
-    const [currentTime, setCurrentTime] = useState(new Date("2025-01-02T18:15:02+06:00"));
+    const [currentTime, setCurrentTime] = useState(null);
+
+    // Fetch current time from WorldTimeAPI for UTC+6
+    useEffect(() => {
+        const fetchCurrentTime = async () => {
+            try {
+                const response = await axios.get('http://worldtimeapi.org/api/timezone/Asia/Dhaka');
+                const serverTime = new Date(response.data.datetime);
+                setCurrentTime(serverTime);
+            } catch (error) {
+                console.error('Error fetching time:', error);
+                // Fallback to system time if API fails
+                setCurrentTime(new Date());
+            }
+        };
+
+        fetchCurrentTime();
+    }, []);
+
+    // Update current time every second
+    useEffect(() => {
+        if (!currentTime) return;
+
+        const timer = setInterval(() => {
+            setCurrentTime(prevTime => {
+                const newTime = new Date(prevTime.getTime());
+                newTime.setSeconds(newTime.getSeconds() + 1);
+                return newTime;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [currentTime]);
 
     // First fetch community ID from name
     useEffect(() => {
@@ -66,13 +98,13 @@ const CountdownTimer = () => {
         fetchEventDetails();
     }, [communityId, eventId]);
 
+    // Calculate time left based on current time
     useEffect(() => {
-        if (!event?.startDate) return;
+        if (!event?.startDate || !currentTime) return;
 
         const calculateTimeLeft = () => {
-            const startTime = new Date(event.startDate).getTime();
-            const now = currentTime.getTime();
-            const difference = startTime - now;
+            const startTime = new Date(event.startDate);
+            const difference = startTime - currentTime;
 
             if (difference <= 0) {
                 setTimeLeft(null);
@@ -88,15 +120,6 @@ const CountdownTimer = () => {
         };
 
         calculateTimeLeft();
-        const timer = setInterval(() => {
-            setCurrentTime(prevTime => {
-                const newTime = new Date(prevTime.getTime());
-                newTime.setSeconds(newTime.getSeconds() + 1);
-                return newTime;
-            });
-        }, 1000);
-
-        return () => clearInterval(timer);
     }, [event?.startDate, currentTime]);
 
     const handleAttendance = async () => {
