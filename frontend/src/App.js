@@ -15,7 +15,6 @@ import NotFound from './components/NotFound';
 import Home from './pages/Home';
 import UserProfile from './pages/UserProfile';
 import Routine from './pages/Routine';
-import Admin from './pages/Admin';
 import { AuthProvider } from './contexts/AuthContext';
 import VerifyEmail from './components/Auth/VerifyEmail';
 
@@ -83,7 +82,6 @@ function App() {
                   <Route path="/search" element={<SearchResults />} />
                   <Route path="/verify-email/:token" element={<VerifyEmail />} />
                   <Route path="/routine" element={<Routine />} />
-                  <Route path="/admin" element={<Admin />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Box>

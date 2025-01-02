@@ -20,18 +20,19 @@ import {
 import { Search as SearchIcon, Delete as DeleteIcon, Download as DownloadIcon } from '@mui/icons-material';
 import axios from '../utils/axios';
 import { toPng } from 'html-to-image';
+import ClassRoutine from '../components/ClassRoutine/ClassRoutine';
 
 const Routine = () => {
-    const [tabValue, setTabValue] = useState(0);
-    const [loading, setLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState(0);
     const [examSchedules, setExamSchedules] = useState([]);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const courseInputRef = useRef('');
     const sectionInputRef = useRef('');
     const tableRef = useRef(null);
 
     const handleTabChange = (event, newValue) => {
-        setTabValue(newValue);
+        setActiveTab(newValue);
     };
 
     const formatDate = (date) => {
@@ -148,136 +149,132 @@ const Routine = () => {
         }
     };
 
-    const ExamRoutine = () => (
-        <Box sx={{ mt: 3 }}>
-            <Box component="form" onSubmit={handleSearch} sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                <TextField
-                    label="Course Code"
-                    inputRef={courseInputRef}
-                    variant="outlined"
-                    size="small"
-                    placeholder="e.g., CSE101"
-                    sx={{ bgcolor: 'background.paper' }}
-                />
-                <TextField
-                    label="Section"
-                    inputRef={sectionInputRef}
-                    variant="outlined"
-                    size="small"
-                    placeholder="e.g., 1"
-                    sx={{ bgcolor: 'background.paper' }}
-                    inputProps={{ maxLength: 2 }}
-                />
-                <Button
-                    type="submit"
-                    variant="contained"
-                    startIcon={<SearchIcon />}
-                    disabled={loading}
-                >
-                    Search
-                </Button>
-            </Box>
-
-            {error && (
-                <Typography color="error" sx={{ mb: 2 }}>
-                    {error}
-                </Typography>
-            )}
-
-            {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                    <CircularProgress />
-                </Box>
-            ) : examSchedules.length > 0 ? (
-                <>
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<DownloadIcon />}
-                            onClick={handleDownload}
-                        >
-                            Download Routine
-                        </Button>
-                    </Box>
-                    <Box 
-                        ref={tableRef}
-                        sx={{ 
-                            mt: 2,
-                            bgcolor: '#2a2a2a',
-                            p: 3,
-                            borderRadius: 1,
-                            maxHeight: 'none',
-                            overflow: 'visible'
-                        }}
-                    >
-                        <Typography variant="h5" sx={{ color: '#fff', mb: 2, textAlign: 'center' }}>
-                            Exam Routine
-                        </Typography>
-                        <TableContainer sx={{ maxHeight: 'none', overflow: 'visible' }}>
-                            <Table sx={{ minWidth: 650 }}>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell sx={{ fontSize: '1.1rem', fontWeight: 'bold', p: 2, color: '#fff' }}>Course</TableCell>
-                                        <TableCell sx={{ fontSize: '1.1rem', fontWeight: 'bold', p: 2, color: '#fff' }}>Section</TableCell>
-                                        <TableCell sx={{ fontSize: '1.1rem', fontWeight: 'bold', p: 2, color: '#fff' }}>Date</TableCell>
-                                        <TableCell sx={{ fontSize: '1.1rem', fontWeight: 'bold', p: 2, color: '#fff' }}>Time</TableCell>
-                                        <TableCell sx={{ fontSize: '1.1rem', fontWeight: 'bold', p: 2, color: '#fff' }}>Room</TableCell>
-                                        <TableCell sx={{ fontSize: '1.1rem', fontWeight: 'bold', p: 2, color: '#fff' }}>Department</TableCell>
-                                        <TableCell align="center" sx={{ fontSize: '1.1rem', fontWeight: 'bold', p: 2, color: '#fff', '@media print': { display: 'none' } }}>Action</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {examSchedules.map((exam) => (
-                                        <TableRow key={exam._id}>
-                                            <TableCell sx={{ fontSize: '1rem', p: 2, color: '#fff' }}>{exam.course}</TableCell>
-                                            <TableCell sx={{ fontSize: '1rem', p: 2, color: '#fff' }}>{exam.section}</TableCell>
-                                            <TableCell sx={{ fontSize: '1rem', p: 2, color: '#fff' }}>{formatDate(exam.finalDate)}</TableCell>
-                                            <TableCell sx={{ fontSize: '1rem', p: 2, color: '#fff' }}>{`${exam.startTime} - ${exam.endTime}`}</TableCell>
-                                            <TableCell sx={{ fontSize: '1rem', p: 2, color: '#fff' }}>{exam.room}</TableCell>
-                                            <TableCell sx={{ fontSize: '1rem', p: 2, color: '#fff' }}>{exam.dept}</TableCell>
-                                            <TableCell align="center" sx={{ p: 2, '@media print': { display: 'none' } }}>
-                                                <IconButton 
-                                                    onClick={() => handleRemoveExam(exam.course)}
-                                                    color="error"
-                                                    size="small"
-                                                    sx={{ color: '#ff6666' }}
-                                                >
-                                                    <DeleteIcon />
-                                                </IconButton>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    </Box>
-                </>
-            ) : null}
-        </Box>
-    );
-
-    const ClassRoutine = () => (
-        <Box sx={{ mt: 3 }}>
-            <Typography variant="h6" sx={{ textAlign: 'center', color: 'text.secondary' }}>
-                Class Routine Feature Coming Soon
-            </Typography>
-        </Box>
-    );
-
     return (
-        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-            <Paper sx={{ p: 3 }}>
-                <Typography variant="h5" sx={{ mb: 3 }}>
+        <Container maxWidth="lg" sx={{ mt: 2, mb: 2 }}>
+            <Paper sx={{ p: 2 }}>
+                <Typography variant="h4" sx={{ mb: 2 }}>
                     Academic Routine
                 </Typography>
-                <Tabs value={tabValue} onChange={handleTabChange}>
+                <Tabs 
+                    value={activeTab} 
+                    onChange={handleTabChange}
+                    sx={{ mb: 3 }}
+                >
                     <Tab label="Exam Routine" />
                     <Tab label="Class Routine" />
                 </Tabs>
-                <Box sx={{ mt: 2 }}>
-                    {tabValue === 0 ? <ExamRoutine /> : <ClassRoutine />}
-                </Box>
+
+                {activeTab === 0 ? (
+                    <>
+                        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                            <TextField
+                                label="Course Code"
+                                inputRef={courseInputRef}
+                                variant="outlined"
+                                size="small"
+                                placeholder="e.g., CSE101"
+                                sx={{ bgcolor: 'background.paper' }}
+                            />
+                            <TextField
+                                label="Section"
+                                inputRef={sectionInputRef}
+                                variant="outlined"
+                                size="small"
+                                placeholder="e.g., 1"
+                                sx={{ bgcolor: 'background.paper' }}
+                                inputProps={{ maxLength: 2 }}
+                            />
+                            <Button
+                                type="submit"
+                                variant="contained"
+                                startIcon={<SearchIcon />}
+                                disabled={loading}
+                                onClick={handleSearch}
+                            >
+                                Search
+                            </Button>
+                        </Box>
+
+                        {error && (
+                            <Typography color="error" sx={{ mb: 2 }}>
+                                {error}
+                            </Typography>
+                        )}
+
+                        {loading ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                                <CircularProgress />
+                            </Box>
+                        ) : examSchedules.length > 0 ? (
+                            <>
+                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        startIcon={<DownloadIcon />}
+                                        onClick={handleDownload}
+                                    >
+                                        Download Routine
+                                    </Button>
+                                </Box>
+                                <Box 
+                                    ref={tableRef}
+                                    sx={{ 
+                                        mt: 2,
+                                        bgcolor: '#2a2a2a',
+                                        p: 3,
+                                        borderRadius: 1,
+                                        maxHeight: 'none',
+                                        overflow: 'visible'
+                                    }}
+                                >
+                                    <Typography variant="h5" sx={{ color: '#fff', mb: 2, textAlign: 'center' }}>
+                                        Exam Routine
+                                    </Typography>
+                                    <TableContainer sx={{ maxHeight: 'none', overflow: 'visible' }}>
+                                        <Table sx={{ minWidth: 650 }}>
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell sx={{ fontSize: '1.1rem', fontWeight: 'bold', p: 2, color: '#fff' }}>Course</TableCell>
+                                                    <TableCell sx={{ fontSize: '1.1rem', fontWeight: 'bold', p: 2, color: '#fff' }}>Section</TableCell>
+                                                    <TableCell sx={{ fontSize: '1.1rem', fontWeight: 'bold', p: 2, color: '#fff' }}>Date</TableCell>
+                                                    <TableCell sx={{ fontSize: '1.1rem', fontWeight: 'bold', p: 2, color: '#fff' }}>Time</TableCell>
+                                                    <TableCell sx={{ fontSize: '1.1rem', fontWeight: 'bold', p: 2, color: '#fff' }}>Room</TableCell>
+                                                    <TableCell sx={{ fontSize: '1.1rem', fontWeight: 'bold', p: 2, color: '#fff' }}>Department</TableCell>
+                                                    <TableCell align="center" sx={{ fontSize: '1.1rem', fontWeight: 'bold', p: 2, color: '#fff', '@media print': { display: 'none' } }}>Action</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {examSchedules.map((exam) => (
+                                                    <TableRow key={exam._id}>
+                                                        <TableCell sx={{ fontSize: '1rem', p: 2, color: '#fff' }}>{exam.course}</TableCell>
+                                                        <TableCell sx={{ fontSize: '1rem', p: 2, color: '#fff' }}>{exam.section}</TableCell>
+                                                        <TableCell sx={{ fontSize: '1rem', p: 2, color: '#fff' }}>{formatDate(exam.finalDate)}</TableCell>
+                                                        <TableCell sx={{ fontSize: '1rem', p: 2, color: '#fff' }}>{`${exam.startTime} - ${exam.endTime}`}</TableCell>
+                                                        <TableCell sx={{ fontSize: '1rem', p: 2, color: '#fff' }}>{exam.room}</TableCell>
+                                                        <TableCell sx={{ fontSize: '1rem', p: 2, color: '#fff' }}>{exam.dept}</TableCell>
+                                                        <TableCell align="center" sx={{ p: 2, '@media print': { display: 'none' } }}>
+                                                            <IconButton 
+                                                                onClick={() => handleRemoveExam(exam.course)}
+                                                                color="error"
+                                                                size="small"
+                                                                sx={{ color: '#ff6666' }}
+                                                            >
+                                                                <DeleteIcon />
+                                                            </IconButton>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Box>
+                            </>
+                        ) : null}
+                    </>
+                ) : (
+                    <ClassRoutine />
+                )}
             </Paper>
         </Container>
     );
