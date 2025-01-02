@@ -47,25 +47,15 @@ const Sidebar = () => {
         width: 280,
         flexShrink: 0,
         position: 'sticky',
-        top: 64, // Adjust based on your header height
+        top: 64,
         height: 'calc(100vh - 64px)',
         overflowY: 'auto',
-        backgroundColor: 'background.paper',
-        border: 1,
-        borderColor: 'divider',
-        '&::-webkit-scrollbar': {
-          width: '8px',
-        },
-        '&::-webkit-scrollbar-track': {
-          background: 'transparent',
-        },
-        '&::-webkit-scrollbar-thumb': {
-          backgroundColor: 'rgba(0,0,0,0.2)',
-          borderRadius: '4px',
-        },
+        backgroundColor: '#1a1a1b',
+        borderRight: '1px solid #343536',
+        color: '#d7dadc'
       }}
     >
-      <List sx={{ mt: 8 }}>
+      <List>
         <ListItem>
           <Button
             fullWidth
@@ -77,19 +67,19 @@ const Sidebar = () => {
             Create Post
           </Button>
         </ListItem>
-        
-        <ListItem sx={{ mt: 1 }}>
+
+        <ListItem>
           <Button
             fullWidth
             variant="outlined"
-            color="primary"
             startIcon={<AddIcon />}
             onClick={() => navigate('/create-community')}
-            sx={{ 
-              color: 'white',
-              borderColor: 'rgba(255, 255, 255, 0.5)',
+            sx={{
+              borderColor: '#2196f3',
+              color: '#2196f3',
               '&:hover': {
-                borderColor: 'white'
+                borderColor: '#1976d2',
+                backgroundColor: 'rgba(33, 150, 243, 0.08)'
               }
             }}
           >
