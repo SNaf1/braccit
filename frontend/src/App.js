@@ -17,6 +17,7 @@ import UserProfile from './pages/UserProfile';
 import Routine from './pages/Routine';
 import Communities from './pages/Communities';
 import CountdownTimer from './components/Event/CountdownTimer'; 
+import Courses from './pages/Courses';
 import { AuthProvider } from './contexts/AuthContext';
 import VerifyEmail from './components/Auth/VerifyEmail';
 
@@ -86,6 +87,7 @@ function App() {
                   <Route path="/verify-email/:token" element={<VerifyEmail />} />
                   <Route path="/routine" element={<Routine />} />
                   <Route path="/b/:name/events/:eventId" element={<CountdownTimer />} />
+                  <Route path="/courses" element={<Courses />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Box>

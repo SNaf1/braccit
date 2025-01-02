@@ -40,6 +40,25 @@ const userSchema = new mongoose.Schema({
         trim: true,
         maxlength: 500
     },
+    completedCourses: [{
+        course: {
+            type: String,
+            ref: 'Course'
+        },
+        completedAt: {
+            type: Date,
+            default: Date.now
+        },
+        grade: {
+            type: String,
+            enum: ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'F'],
+            required: true
+        }
+    }],
+    currentCourses: [{
+        type: String,
+        ref: 'Course'
+    }],
     isEmailVerified: {
         type: Boolean,
         default: false

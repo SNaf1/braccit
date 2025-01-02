@@ -15,6 +15,7 @@ import {
   Public as PublicIcon,
   Lock as LockIcon,
   PostAdd as PostAddIcon,
+  School as SchoolIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from '../../utils/axios';
@@ -86,54 +87,67 @@ const Sidebar = () => {
           </Button>
         </ListItem>
 
-        {user && userCommunities.length > 0 && (
-          <>
-            <Divider sx={{ my: 2, borderColor: '#343536' }} />
-            <ListItem>
-              <Typography variant="subtitle2" color="#818384">
-                YOUR COMMUNITIES
-              </Typography>
-            </ListItem>
-            {userCommunities.map((community) => (
-              <ListItem
-                key={community._id}
-                button
-                component={Link}
-                to={`/b/${community.name}`}
-                selected={location.pathname === `/b/${community.name}`}
-                sx={{
-                  '&.Mui-selected': {
-                    backgroundColor: 'rgba(33, 150, 243, 0.08)',
-                    '&:hover': {
-                      backgroundColor: 'rgba(33, 150, 243, 0.12)'
-                    }
-                  },
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.04)'
-                  }
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 36 }}>
-                  {community.isPrivate ? (
-                    <LockIcon sx={{ color: '#818384' }} />
-                  ) : (
-                    <PublicIcon sx={{ color: '#818384' }} />
-                  )}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={`b/${community.name}`}
-                  secondary={`${community.memberCount || 0} member${community.memberCount === 1 ? '' : 's'}`}
-                  primaryTypographyProps={{ 
-                    sx: { color: '#d7dadc' }
-                  }}
-                  secondaryTypographyProps={{ 
-                    sx: { color: '#818384' }
-                  }}
-                />
-              </ListItem>
-            ))}
-          </>
+        {user && (
+          <ListItem sx={{ mt: 1 }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              color="primary"
+              startIcon={<SchoolIcon />}
+              onClick={() => navigate('/courses')}
+              sx={{ 
+                color: 'white',
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                '&:hover': {
+                  borderColor: 'white'
+                }
+              }}
+            >
+              My Courses
+            </Button>
+          </ListItem>
         )}
+
+        <Divider sx={{ my: 2, borderColor: 'rgba(255, 255, 255, 0.12)' }} />
+
+        <ListItem>
+          <Typography variant="subtitle1" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+            Your Communities
+          </Typography>
+        </ListItem>
+
+        {userCommunities.map((community) => (
+          <ListItem
+            key={community.name}
+            button
+            component={Link}
+            to={`/b/${community.name}`}
+            selected={location.pathname === `/b/${community.name}`}
+            sx={{
+              color: 'white',
+              '&.Mui-selected': {
+                bgcolor: 'rgba(255, 255, 255, 0.08)',
+                '&:hover': {
+                  bgcolor: 'rgba(255, 255, 255, 0.12)'
+                }
+              },
+              '&:hover': {
+                bgcolor: 'rgba(255, 255, 255, 0.04)'
+              }
+            }}
+          >
+            <ListItemIcon sx={{ color: 'white' }}>
+              {community.isPrivate ? <LockIcon /> : <PublicIcon />}
+            </ListItemIcon>
+            <ListItemText 
+              primary={community.name}
+              secondary={`${community.memberCount} members`}
+              secondaryTypographyProps={{
+                sx: { color: 'rgba(255, 255, 255, 0.7)' }
+              }}
+            />
+          </ListItem>
+        ))}
       </List>
     </Box>
   );

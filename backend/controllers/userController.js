@@ -3,7 +3,7 @@ const User = require('../models/User');
 const fs = require('fs').promises;
 const path = require('path');
 
-// Get user profile
+
 exports.getUserProfile = async (req, res) => {
     try {
         const user = await User.findOne({ username: req.params.username })
@@ -56,7 +56,7 @@ exports.updateProfile = async (req, res) => {
     }
 };
 
-// Update profile picture
+
 exports.updateProfilePicture = async (req, res) => {
     try {
         if (!req.file) {
@@ -75,7 +75,7 @@ exports.updateProfilePicture = async (req, res) => {
                 await fs.unlink(oldPicturePath);
             } catch (err) {
                 console.error('Error deleting old profile picture:', err);
-                // Continue execution even if delete fails
+                
             }
         }
 

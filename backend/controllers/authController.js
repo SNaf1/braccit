@@ -4,7 +4,7 @@ const User = require('../models/User');
 const { validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 
-// Load environment variables
+
 const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret';
 const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
 const EMAIL_FROM = process.env.SMTP_USER || 'sadnan.ornob@gmail.com';

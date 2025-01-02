@@ -1,13 +1,13 @@
 const Event = require('../models/Event');
 const Community = require('../models/Community');
 
-// Create a new event
+
 exports.createEvent = async (req, res) => {
     try {
         const { communityId } = req.params;
         const userId = req.user._id;
 
-        // Check if community exists
+        
         const community = await Community.findById(communityId);
         if (!community) {
             return res.status(404).json({ message: 'Community not found' });
@@ -35,7 +35,7 @@ exports.createEvent = async (req, res) => {
     }
 };
 
-// Get community events
+
 exports.getCommunityEvents = async (req, res) => {
     try {
         const { communityId } = req.params;
@@ -49,7 +49,7 @@ exports.getCommunityEvents = async (req, res) => {
     }
 };
 
-// Get event details
+
 exports.getEventDetails = async (req, res) => {
     try {
         const { eventId } = req.params;
@@ -72,7 +72,7 @@ exports.getEventDetails = async (req, res) => {
     }
 };
 
-// Toggle going status
+
 exports.toggleGoing = async (req, res) => {
     try {
         const { eventId, communityId } = req.params;
