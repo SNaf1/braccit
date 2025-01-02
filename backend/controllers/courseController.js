@@ -138,6 +138,13 @@ const getCourseSuggestions = async (req, res) => {
                     return false;
                 }
 
+                // Skip third semester specific courses if not in third semester
+                const thirdSemesterOnlyCourses = ['BNG103', 'EMB101', 'HUM103'];
+                if (thirdSemesterOnlyCourses.includes(course.code)) {
+                    console.log(`${course.code} skipped: can only be taken in third semester`);
+                    return false;
+                }
+
                 // Allow courses from current semester and next semester
                 if (courseInfo.semester > currentSemester + 1) {
                     console.log(`${course.code} skipped: semester ${courseInfo.semester} is too far ahead`);
@@ -188,6 +195,8 @@ const getCourseSuggestions = async (req, res) => {
                 return typeOrder[a.type] - typeOrder[b.type];
             });
 
+        console.log('Eligible courses:', eligibleCourses.map(c => c.code));
+
         // Generate course suggestions based on course load options
         let suggestedCourses = [];
         if (courseLoad.suggestBoth) {
@@ -195,37 +204,45 @@ const getCourseSuggestions = async (req, res) => {
             const minCourses = eligibleCourses.slice(0, courseLoad.minCourses);
             console.log(`Option 1 (${courseLoad.minCourses} courses):`, minCourses.map(c => c.code));
             
-            // For maximum course load
-            const maxCourses = eligibleCourses.slice(0, courseLoad.maxCourses);
+            // For maximum course load - show all eligible courses up to maxCourses
+            const maxCourses = eligibleCourses.slice(0, Math.max(courseLoad.maxCourses, eligibleCourses.length));
             console.log(`Option 2 (${courseLoad.maxCourses} courses):`, maxCourses.map(c => c.code));
 
-            suggestedCourses = [
-                {
+            // Only add options if there are enough courses
+            if (minCourses.length > 0) {
+                suggestedCourses.push({
                     courseLoad: courseLoad.minCourses,
                     courses: minCourses
-                },
-                {
+                });
+            }
+            
+            if (maxCourses.length > 0) {
+                suggestedCourses.push({
                     courseLoad: courseLoad.maxCourses,
-                    courses: maxCourses
-                }
-            ];
+                    courses: maxCourses.slice(0, courseLoad.maxCourses)  // Ensure we only show maxCourses number of courses
+                });
+            }
         } else {
             const courses = eligibleCourses.slice(0, courseLoad.maxCourses);
             console.log(`Single option (${courseLoad.maxCourses} courses):`, courses.map(c => c.code));
             
-            suggestedCourses = [
-                {
+            if (courses.length > 0) {
+                suggestedCourses.push({
                     courseLoad: courseLoad.maxCourses,
                     courses: courses
-                }
-            ];
+                });
+            }
         }
 
         // Add current status information
         const currentStatus = {
             cgpa: latestCGPA,
             currentSemester,
-            courseLoadOptions: courseLoad,
+            courseLoadOptions: {
+                min: courseLoad.minCourses,
+                max: courseLoad.maxCourses,
+                suggestBoth: courseLoad.suggestBoth
+            },
             completedCourses: completedCourses.length,
             totalCreditsCompleted: completedCourses.length * 3,
             totalEligibleCourses: eligibleCourses.length,

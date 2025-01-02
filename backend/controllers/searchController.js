@@ -1,7 +1,7 @@
 const Community = require('../models/Community');
 const Post = require('../models/Post');
 
-// Search communities
+
 const searchCommunities = async (req, res) => {
     try {
         const { query } = req.query;

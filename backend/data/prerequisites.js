@@ -59,6 +59,13 @@ const prerequisites = {
         softPrereqs: [],
         fullChain: ['PHY111']
     },
+    MAT120: {
+        semester: 2,
+        type: courseTypes.SCHOOL_CORE,
+        hardPrereqs: ['MAT110'],
+        softPrereqs: [],
+        fullChain: ['MAT110']
+    },
 
     // Semester 3
     BNG103: {
@@ -97,13 +104,6 @@ const prerequisites = {
         hardPrereqs: ['CSE111', 'CSE230'],
         softPrereqs: [],
         fullChain: ['CSE111', 'CSE110', 'CSE230']
-    },
-    MAT120: {
-        semester: 4,
-        type: courseTypes.SCHOOL_CORE,
-        hardPrereqs: ['MAT110'],
-        softPrereqs: [],
-        fullChain: ['MAT110']
     },
     CSE250: {
         semester: 4,
@@ -166,13 +166,6 @@ const prerequisites = {
         hardPrereqs: ['CSE221'],
         softPrereqs: [],
         fullChain: ['CSE221', 'CSE220', 'CSE111', 'CSE110']
-    },
-    MAT215: {
-        semester: 7,
-        type: courseTypes.SCHOOL_CORE,
-        hardPrereqs: ['MAT216'],
-        softPrereqs: [],
-        fullChain: ['MAT216', 'MAT120', 'MAT110']
     },
     CSE340: {
         semester: 7,
