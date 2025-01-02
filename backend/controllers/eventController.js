@@ -5,32 +5,33 @@ const Community = require('../models/Community');
 exports.createEvent = async (req, res) => {
     try {
         const { communityId } = req.params;
-        const { title, description, startDate } = req.body;
+        const userId = req.user._id;
 
-        // Check if user is a member of the community
+        // Check if community exists
         const community = await Community.findById(communityId);
         if (!community) {
-            return res.status(404).json({ error: 'Community not found' });
+            return res.status(404).json({ message: 'Community not found' });
         }
 
-        if (!community.members.includes(req.user._id)) {
-            return res.status(403).json({ error: 'You must be a member to create events' });
+        // Check if user is admin or owner
+        const isAdmin = community.admins.includes(userId);
+        const isOwner = community.owner.equals(userId);
+
+        if (!isAdmin && !isOwner) {
+            return res.status(403).json({ message: 'Only community admins and owners can create events' });
         }
 
         const event = new Event({
-            title,
-            description,
-            startDate: new Date(startDate),
+            ...req.body,
             community: communityId,
-            creator: req.user._id,
-            going: [req.user._id] // Creator automatically attends
+            creator: userId
         });
 
         await event.save();
-        const savedEvent = await event.populate(['creator', 'going']);
-        res.status(201).json(savedEvent);
+
+        res.status(201).json(event);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
