@@ -93,8 +93,37 @@ const getEventDetails = async (req, res) => {
     }
 };
 
+// Toggle going status for an event
+const toggleGoing = async (req, res) => {
+    try {
+        const event = await Event.findById(req.params.eventId);
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        // Check if user is already marked as going
+        const isGoing = event.going.includes(req.user.id);
+
+        if (isGoing) {
+            // User is marked as going, so remove them
+            event.going = event.going.filter(userId => userId.toString() !== req.user.id);
+        } else {
+            // User is not marked as going, so add them
+            event.going.push(req.user.id);
+        }
+
+        await event.save();
+        res.json({ going: event.going });
+    } catch (error) {
+        console.error('Error toggling going status:', error);
+        res.status(500).json({ error: 'Error toggling going status' });
+    }
+};
+
 module.exports = {
     createEvent,
     getCommunityEvents,
     getEventDetails,
+    toggleGoing,
 };

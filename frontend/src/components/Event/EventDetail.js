@@ -24,7 +24,7 @@ const EventDetail = () => {
         const fetchEvent = async () => {
             try {
                 console.log('Fetching event with ID:', eventId);
-                const response = await axios.get(`/api/b/events/${eventId}`);
+                const response = await axios.get(`/api/events/${eventId}`);
                 setEvent(response.data);
                 setGoing(response.data.going?.includes(user?._id) || false);
             } catch (err) {
@@ -73,7 +73,7 @@ const EventDetail = () => {
 
     const handleGoingClick = async () => {
         try {
-            await axios.post(`/api/b/events/${eventId}/going`);
+            await axios.post(`/api/events/${eventId}/going`);
             setGoing(!going);
         } catch (err) {
             setError(err.response?.data?.error || 'Error updating attendance status');
