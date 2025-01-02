@@ -34,9 +34,11 @@ const DegreeProgress = () => {
     const fetchProgress = async () => {
         try {
             const response = await axios.get('/api/courses/progress');
+            console.log('Progress data:', response.data);
             setProgress(response.data);
             setLoading(false);
         } catch (err) {
+            console.error('Error fetching progress:', err);
             setError('Failed to load degree progress');
             setLoading(false);
         }
@@ -50,54 +52,42 @@ const DegreeProgress = () => {
         );
     }
 
-    if (error) {
+    if (error || !progress) {
         return (
-            <Alert severity="error" sx={{ m: 2 }}>
-                {error}
-            </Alert>
+            <Box p={3}>
+                <Alert severity="error">{error || 'Failed to load degree progress'}</Alert>
+            </Box>
         );
     }
 
-    const calculatePercentage = (completed, total) => {
-        return Math.round((completed / total) * 100);
-    };
-
     return (
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ mt: 2 }}>
             {/* Overall Progress Card */}
             <Card sx={{ mb: 3 }}>
                 <CardContent>
-                    <Grid container spacing={2} alignItems="center">
+                    <Grid container spacing={3}>
                         <Grid item xs={12} md={4}>
-                            <Box display="flex" alignItems="center" justifyContent="center">
-                                <Box position="relative" display="inline-flex">
-                                    <CircularProgress
-                                        variant="determinate"
-                                        value={calculatePercentage(
-                                            progress.totalCredits.completed,
-                                            progress.totalCredits.required
-                                        )}
-                                        size={120}
-                                        thickness={4}
-                                        sx={{ color: 'primary.main' }}
-                                    />
-                                    <Box
-                                        position="absolute"
-                                        display="flex"
-                                        alignItems="center"
-                                        justifyContent="center"
-                                        top={0}
-                                        left={0}
-                                        right={0}
-                                        bottom={0}
-                                    >
-                                        <Typography variant="h6" component="div" color="text.secondary">
-                                            {calculatePercentage(
-                                                progress.totalCredits.completed,
-                                                progress.totalCredits.required
-                                            )}%
-                                        </Typography>
-                                    </Box>
+                            <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                                <CircularProgress
+                                    variant="determinate"
+                                    value={(progress.totalCredits.completed / progress.totalCredits.required) * 100}
+                                    size={100}
+                                />
+                                <Box
+                                    sx={{
+                                        top: 0,
+                                        left: 0,
+                                        bottom: 0,
+                                        right: 0,
+                                        position: 'absolute',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                >
+                                    <Typography variant="caption" component="div" color="text.secondary">
+                                        {Math.round((progress.totalCredits.completed / progress.totalCredits.required) * 100)}%
+                                    </Typography>
                                 </Box>
                             </Box>
                         </Grid>
@@ -132,224 +122,151 @@ const DegreeProgress = () => {
             </Card>
 
             {/* University Core Progress */}
-            <Accordion defaultExpanded>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="h6">
-                        University Core Requirements ({progress.universityCore.totalCredits.completed}/
-                        {progress.universityCore.totalCredits.required} credits)
-                    </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                    <Grid container spacing={2}>
-                        {Object.entries(progress.universityCore.streams).map(([streamName, stream]) => (
-                            <Grid item xs={12} key={streamName}>
-                                <Card variant="outlined" sx={{ mb: 2 }}>
+            {progress.universityCore && (
+                <Accordion defaultExpanded>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography variant="h6">
+                            University Core Requirements ({progress.universityCore.totalCredits.completed}/
+                            {progress.universityCore.totalCredits.required} credits)
+                        </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                        <Grid container spacing={2}>
+                            {Object.entries(progress.universityCore.streams || {}).map(([streamName, stream]) => (
+                                <Grid item xs={12} key={streamName}>
+                                    <Card variant="outlined" sx={{ mb: 2 }}>
+                                        <CardContent>
+                                            <Typography variant="subtitle1" gutterBottom>
+                                                {streamName.replace(/([A-Z])/g, ' $1').trim()}
+                                            </Typography>
+                                            <Box sx={{ mb: 2 }}>
+                                                {stream.completed.map(course => (
+                                                    <Chip
+                                                        key={course.code}
+                                                        label={`${course.code} - ${course.type}`}
+                                                        color="success"
+                                                        size="small"
+                                                        sx={{ m: 0.5 }}
+                                                    />
+                                                ))}
+                                                {stream.remaining.map(code => (
+                                                    <Chip
+                                                        key={code}
+                                                        label={code}
+                                                        variant="outlined"
+                                                        size="small"
+                                                        sx={{ m: 0.5 }}
+                                                    />
+                                                ))}
+                                            </Box>
+                                            {stream.optionalCompleted && stream.optionalCompleted.length > 0 && (
+                                                <Box>
+                                                    <Typography variant="body2" color="text.secondary">
+                                                        Optional Courses Completed: {stream.optionalCompleted.length}
+                                                    </Typography>
+                                                </Box>
+                                            )}
+                                            <Box sx={{ mt: 2 }}>
+                                                <LinearProgress 
+                                                    variant="determinate" 
+                                                    value={(stream.credits.completed / stream.credits.required) * 100} 
+                                                />
+                                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                                    {stream.credits.completed} of {stream.credits.required} credits completed
+                                                </Typography>
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                            ))}
+                        </Grid>
+                    </AccordionDetails>
+                </Accordion>
+            )}
+
+            {/* School Core Progress */}
+            {progress.schoolCore && (
+                <Accordion>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography variant="h6">
+                            School Core ({progress.schoolCore.totalCredits.completed}/
+                            {progress.schoolCore.totalCredits.required} credits)
+                        </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                        <Grid container spacing={2}>
+                            <Grid item xs={12}>
+                                <Card variant="outlined">
                                     <CardContent>
-                                        <Typography variant="subtitle1" gutterBottom>
-                                            {streamName.replace(/([A-Z])/g, ' $1').trim()}
-                                        </Typography>
                                         <Box sx={{ mb: 2 }}>
-                                            {stream.completed.map(code => (
+                                            {progress.schoolCore.courses.map(course => (
                                                 <Chip
-                                                    key={code}
-                                                    label={code}
+                                                    key={course.code}
+                                                    label={`${course.code} - ${course.name}`}
                                                     color="success"
                                                     size="small"
                                                     sx={{ m: 0.5 }}
                                                 />
                                             ))}
-                                            {stream.remaining.map(code => (
+                                        </Box>
+                                        <Box sx={{ mt: 2 }}>
+                                            <LinearProgress 
+                                                variant="determinate" 
+                                                value={(progress.schoolCore.totalCredits.completed / progress.schoolCore.totalCredits.required) * 100} 
+                                            />
+                                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                                {progress.schoolCore.totalCredits.completed} of {progress.schoolCore.totalCredits.required} credits completed
+                                            </Typography>
+                                        </Box>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        </Grid>
+                    </AccordionDetails>
+                </Accordion>
+            )}
+
+            {/* Program Core Progress */}
+            {progress.programCore && (
+                <Accordion>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography variant="h6">
+                            Program Core ({progress.programCore.totalCredits.completed}/
+                            {progress.programCore.totalCredits.required} credits)
+                        </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                        <Grid container spacing={2}>
+                            <Grid item xs={12}>
+                                <Card variant="outlined">
+                                    <CardContent>
+                                        <Box sx={{ mb: 2 }}>
+                                            {progress.programCore.courses.map(course => (
                                                 <Chip
-                                                    key={code}
-                                                    label={code}
-                                                    variant="outlined"
+                                                    key={course.code}
+                                                    label={`${course.code} - ${course.name}`}
+                                                    color="success"
                                                     size="small"
                                                     sx={{ m: 0.5 }}
                                                 />
                                             ))}
                                         </Box>
-                                        {stream.optionalCompleted && (
-                                            <Box>
-                                                <Typography variant="body2" color="text.secondary">
-                                                    Optional Courses Completed: {stream.optionalCompleted.length}
-                                                </Typography>
-                                            </Box>
-                                        )}
+                                        <Box sx={{ mt: 2 }}>
+                                            <LinearProgress 
+                                                variant="determinate" 
+                                                value={(progress.programCore.totalCredits.completed / progress.programCore.totalCredits.required) * 100} 
+                                            />
+                                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                                {progress.programCore.totalCredits.completed} of {progress.programCore.totalCredits.required} credits completed
+                                            </Typography>
+                                        </Box>
                                     </CardContent>
                                 </Card>
                             </Grid>
-                        ))}
-                    </Grid>
-                </AccordionDetails>
-            </Accordion>
-
-            {/* School Core Progress */}
-            <Accordion>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="h6">
-                        School Core ({progress.schoolCore.totalCredits.completed}/
-                        {progress.schoolCore.totalCredits.required} credits)
-                    </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                    <Grid container spacing={2}>
-                        <Grid item xs={12}>
-                            <LinearProgress
-                                variant="determinate"
-                                value={calculatePercentage(
-                                    progress.schoolCore.totalCredits.completed,
-                                    progress.schoolCore.totalCredits.required
-                                )}
-                                sx={{ mb: 2, height: 10, borderRadius: 5 }}
-                            />
-                            <Box sx={{ mb: 2 }}>
-                                {progress.schoolCore.completed.map(code => (
-                                    <Chip
-                                        key={code}
-                                        label={code}
-                                        color="success"
-                                        size="small"
-                                        sx={{ m: 0.5 }}
-                                    />
-                                ))}
-                                {progress.schoolCore.remaining.map(code => (
-                                    <Chip
-                                        key={code}
-                                        label={code}
-                                        variant="outlined"
-                                        size="small"
-                                        sx={{ m: 0.5 }}
-                                    />
-                                ))}
-                            </Box>
                         </Grid>
-                    </Grid>
-                </AccordionDetails>
-            </Accordion>
-
-            {/* Program Core Progress */}
-            <Accordion>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="h6">
-                        Program Core ({progress.programCore.totalCredits.completed}/
-                        {progress.programCore.totalCredits.required} credits)
-                    </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                    <Grid container spacing={2}>
-                        <Grid item xs={12}>
-                            <LinearProgress
-                                variant="determinate"
-                                value={calculatePercentage(
-                                    progress.programCore.totalCredits.completed,
-                                    progress.programCore.totalCredits.required
-                                )}
-                                sx={{ mb: 2, height: 10, borderRadius: 5 }}
-                            />
-                            <Box sx={{ mb: 2 }}>
-                                {progress.programCore.completed.map(code => (
-                                    <Chip
-                                        key={code}
-                                        label={code}
-                                        color="success"
-                                        size="small"
-                                        sx={{ m: 0.5 }}
-                                    />
-                                ))}
-                                {progress.programCore.remaining.map(code => (
-                                    <Chip
-                                        key={code}
-                                        label={code}
-                                        variant="outlined"
-                                        size="small"
-                                        sx={{ m: 0.5 }}
-                                    />
-                                ))}
-                            </Box>
-                        </Grid>
-                    </Grid>
-                </AccordionDetails>
-            </Accordion>
-
-            {/* Program Elective Progress */}
-            <Accordion>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="h6">
-                        Program Electives ({progress.programElective.totalCredits.completed}/
-                        {progress.programElective.totalCredits.required} credits)
-                    </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                    <Grid container spacing={2}>
-                        <Grid item xs={12}>
-                            <Box sx={{ mb: 2 }}>
-                                <Typography variant="subtitle2" gutterBottom>
-                                    CSE Electives
-                                </Typography>
-                                {progress.programElective.completedCSE.map(code => (
-                                    <Chip
-                                        key={code}
-                                        label={code}
-                                        color="success"
-                                        size="small"
-                                        sx={{ m: 0.5 }}
-                                    />
-                                ))}
-                            </Box>
-                            <Box sx={{ mb: 2 }}>
-                                <Typography variant="subtitle2" gutterBottom>
-                                    Other Electives
-                                </Typography>
-                                {progress.programElective.completedOther.map(code => (
-                                    <Chip
-                                        key={code}
-                                        label={code}
-                                        color="success"
-                                        size="small"
-                                        sx={{ m: 0.5 }}
-                                    />
-                                ))}
-                            </Box>
-                        </Grid>
-                    </Grid>
-                </AccordionDetails>
-            </Accordion>
-
-            {/* Thesis/Project Progress */}
-            <Accordion>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="h6">
-                        Thesis/Project ({progress.projectInternshipThesis.totalCredits.completed}/
-                        {progress.projectInternshipThesis.totalCredits.required} credits)
-                    </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                    <Grid container spacing={2}>
-                        <Grid item xs={12}>
-                            <Box sx={{ mb: 2 }}>
-                                {progress.projectInternshipThesis.completed.map(code => (
-                                    <Chip
-                                        key={code}
-                                        label={code}
-                                        color="success"
-                                        size="small"
-                                        sx={{ m: 0.5 }}
-                                    />
-                                ))}
-                                {progress.projectInternshipThesis.remaining.map(code => (
-                                    <Chip
-                                        key={code}
-                                        label={code}
-                                        variant="outlined"
-                                        size="small"
-                                        sx={{ m: 0.5 }}
-                                    />
-                                ))}
-                            </Box>
-                        </Grid>
-                    </Grid>
-                </AccordionDetails>
-            </Accordion>
+                    </AccordionDetails>
+                </Accordion>
+            )}
         </Box>
     );
 };

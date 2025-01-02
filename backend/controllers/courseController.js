@@ -2,7 +2,7 @@ const Course = require('../models/Course');
 const User = require('../models/User');
 const StudentCourse = require('../models/studentCourse');
 const { prerequisites, courseTypes } = require('../data/prerequisites');
-const { degreePlan, isRequiredCourse } = require('../data/degreePlan');
+const { degreePlan, isRequiredCourse, getCourseCredits } = require('../data/degreePlan');
 
 // Helper function to check if prerequisites are met
 const checkPrerequisites = (courseCode, completedCourses) => {
@@ -49,6 +49,137 @@ const getCourseLoadOptions = (cgpa) => {
         maxCourses: 3,
         suggestBoth: false
     };
+};
+
+// Helper function to track degree progress
+const trackDegreeProgress = (completedCourses) => {
+    const progress = {
+        totalCredits: {
+            completed: 0,
+            required: degreePlan.totalCreditsRequired,
+            remaining: degreePlan.totalCreditsRequired
+        },
+        universityCore: {
+            totalCredits: {
+                completed: 0,
+                required: degreePlan.categories.universityCore.totalCredits,
+                remaining: degreePlan.categories.universityCore.totalCredits
+            },
+            streams: {}
+        },
+        schoolCore: {
+            totalCredits: {
+                completed: 0,
+                required: degreePlan.categories.schoolCore.totalCredits,
+                remaining: degreePlan.categories.schoolCore.totalCredits
+            },
+            courses: []
+        },
+        programCore: {
+            totalCredits: {
+                completed: 0,
+                required: degreePlan.categories.programCore.totalCredits,
+                remaining: degreePlan.categories.programCore.totalCredits
+            },
+            courses: []
+        },
+        isOnTrack: true
+    };
+
+    // Initialize university core streams
+    Object.entries(degreePlan.categories.universityCore.streams).forEach(([streamName, info]) => {
+        const totalCredits = Object.values(info.credits || {}).reduce((sum, credit) => sum + credit, 0);
+        progress.universityCore.streams[streamName] = {
+            completed: [],
+            remaining: [...(info.required || []), ...(info.optional || [])],
+            required: info.required || [],
+            optional: info.optional || [],
+            optionalCompleted: [],
+            credits: {
+                completed: 0,
+                required: totalCredits,
+                remaining: totalCredits
+            }
+        };
+    });
+
+    // Track completed courses
+    completedCourses.forEach(course => {
+        const courseCode = course.code;
+        const credits = getCourseCredits(courseCode);
+        
+        // Update total credits
+        progress.totalCredits.completed += credits;
+        progress.totalCredits.remaining = Math.max(0, progress.totalCredits.required - progress.totalCredits.completed);
+
+        // Check university core courses
+        let foundInUniversityCore = false;
+        Object.entries(degreePlan.categories.universityCore.streams).forEach(([streamName, info]) => {
+            const stream = progress.universityCore.streams[streamName];
+            
+            if ((info.required && info.required.includes(courseCode)) || 
+                (info.optional && info.optional.includes(courseCode))) {
+                stream.completed.push({
+                    code: courseCode,
+                    name: course.name,
+                    credits: credits,
+                    type: info.required && info.required.includes(courseCode) ? 'Required' : 'Optional'
+                });
+                // Remove from remaining courses
+                stream.remaining = stream.remaining.filter(code => code !== courseCode);
+                
+                // Track optional courses separately
+                if (info.optional && info.optional.includes(courseCode)) {
+                    stream.optionalCompleted.push(courseCode);
+                }
+
+                stream.credits.completed += credits;
+                stream.credits.remaining = Math.max(0, stream.credits.required - stream.credits.completed);
+                
+                progress.universityCore.totalCredits.completed += credits;
+                progress.universityCore.totalCredits.remaining = Math.max(0, 
+                    progress.universityCore.totalCredits.required - progress.universityCore.totalCredits.completed);
+                
+                foundInUniversityCore = true;
+            }
+        });
+
+        // Check school core courses
+        if (!foundInUniversityCore && degreePlan.categories.schoolCore.required.includes(courseCode)) {
+            progress.schoolCore.courses.push({
+                code: courseCode,
+                name: course.name,
+                credits: credits,
+                type: 'Required'
+            });
+            progress.schoolCore.totalCredits.completed += credits;
+            progress.schoolCore.totalCredits.remaining = Math.max(0, 
+                progress.schoolCore.totalCredits.required - progress.schoolCore.totalCredits.completed);
+        }
+
+        // Check program core courses
+        const isProgramCore = degreePlan.categories.programCore.courses.some(c => c.code === courseCode);
+        if (!foundInUniversityCore && isProgramCore) {
+            progress.programCore.courses.push({
+                code: courseCode,
+                name: course.name,
+                credits: credits,
+                type: 'Required'
+            });
+            progress.programCore.totalCredits.completed += credits;
+            progress.programCore.totalCredits.remaining = Math.max(0, 
+                progress.programCore.totalCredits.required - progress.programCore.totalCredits.completed);
+        }
+    });
+
+    // Check if on track
+    progress.isOnTrack = (
+        progress.totalCredits.completed >= progress.totalCredits.required * 0.25 && // At least 25% complete
+        progress.universityCore.totalCredits.completed >= progress.universityCore.totalCredits.required * 0.3 && // At least 30% of university core
+        progress.programCore.totalCredits.completed >= progress.programCore.totalCredits.required * 0.2 // At least 20% of program core
+    );
+
+    return progress;
 };
 
 // Get course suggestions
@@ -270,16 +401,25 @@ const getDegreeProgress = async (req, res) => {
             return res.status(401).json({ error: 'User not authenticated' });
         }
 
-        const user = await User.findById(req.user._id)
-            .populate('completedCourses')
-            .populate('currentCourses');
+        console.log('User attached to request:', req.user._id);
 
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
+        // Get student's course history
+        const studentCourses = await StudentCourse.find({ userId: req.user._id })
+            .sort({ createdAt: -1 });
 
-        const completedCourses = user.completedCourses || [];
+        console.log('Student courses:', studentCourses);
+
+        // Get all completed courses
+        const completedCourses = await Course.find({ 
+            code: { 
+                $in: studentCourses.flatMap(semester => semester.courseCodes) 
+            }
+        });
+
+        console.log('Completed courses:', completedCourses);
+
         const progress = trackDegreeProgress(completedCourses);
+        console.log('Progress:', progress);
 
         res.json(progress);
     } catch (error) {
