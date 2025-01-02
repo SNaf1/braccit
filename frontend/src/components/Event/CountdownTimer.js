@@ -1,24 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Box, Typography, Paper, Container } from '@mui/material';
+import { 
+    Box, 
+    Typography, 
+    Paper, 
+    Container, 
+    Button,
+    List,
+    ListItem,
+    ListItemText,
+    ListItemAvatar,
+    Avatar,
+    Divider,
+    Alert,
+    Snackbar
+} from '@mui/material';
+import { PersonAdd as PersonAddIcon, PersonRemove as PersonRemoveIcon } from '@mui/icons-material';
 import axios from '../../utils/axios';
 
 const CountdownTimer = () => {
     const { eventId } = useParams();
     const [timeLeft, setTimeLeft] = useState(null);
     const [eventDetails, setEventDetails] = useState(null);
+    const [attendees, setAttendees] = useState([]);
+    const [isGoing, setIsGoing] = useState(false);
+    const [error, setError] = useState('');
+    const [showSnackbar, setShowSnackbar] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
 
-    // Fetch event details only once
+    // Fetch event details and attendees
     useEffect(() => {
-        const fetchEvent = async () => {
+        const fetchEventData = async () => {
             try {
                 const eventResponse = await axios.get(`/api/b/events/${eventId}`);
                 setEventDetails(eventResponse.data);
+                
+                // Check if current user is going
+                const userIsGoing = eventResponse.data.going?.some(
+                    user => user._id === eventResponse.data.currentUser?._id
+                );
+                setIsGoing(userIsGoing);
+
+                // Set attendees directly from the populated going field
+                setAttendees(eventResponse.data.going || []);
             } catch (error) {
                 console.error('Error fetching event:', error);
+                setError('Failed to load event details');
             }
         };
-        fetchEvent();
+        fetchEventData();
     }, [eventId]);
 
     // Update countdown every second
@@ -43,15 +73,28 @@ const CountdownTimer = () => {
             });
         };
 
-        // Calculate immediately
         calculateTimeLeft();
-
-        // Update every second
         const timer = setInterval(calculateTimeLeft, 1000);
-
-        // Cleanup interval on unmount or when event details change
         return () => clearInterval(timer);
     }, [eventDetails]);
+
+    const handleToggleGoing = async () => {
+        try {
+            await axios.post(`/api/b/events/${eventId}/going`);
+            setIsGoing(!isGoing);
+            
+            // Fetch updated event details
+            const updatedEvent = await axios.get(`/api/b/events/${eventId}`);
+            setAttendees(updatedEvent.data.going || []);
+            
+            setSnackbarMessage(isGoing ? 'You are no longer attending' : 'You are now attending!');
+            setShowSnackbar(true);
+        } catch (error) {
+            console.error('Error toggling attendance:', error);
+            setError('Failed to update attendance');
+            setShowSnackbar(true);
+        }
+    };
 
     if (!eventDetails) {
         return null;
@@ -158,7 +201,67 @@ const CountdownTimer = () => {
                         )}
                     </Box>
                 </Box>
+
+                {/* Attendance Section */}
+                <Box sx={{ mt: 4 }}>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        mb: 2
+                    }}>
+                        <Typography variant="h6" sx={{ color: 'primary.main' }}>
+                            Attendees ({attendees.length})
+                        </Typography>
+                        <Button
+                            variant="contained"
+                            color={isGoing ? "error" : "primary"}
+                            onClick={handleToggleGoing}
+                            startIcon={isGoing ? <PersonRemoveIcon /> : <PersonAddIcon />}
+                        >
+                            {isGoing ? "Not Going" : "Going"}
+                        </Button>
+                    </Box>
+
+                    <Paper elevation={1} sx={{ p: 2, bgcolor: 'background.paper' }}>
+                        {attendees.length > 0 ? (
+                            <List>
+                                {attendees.map((attendee, index) => (
+                                    <React.Fragment key={attendee._id}>
+                                        <ListItem>
+                                            <ListItemAvatar>
+                                                <Avatar>{attendee.username[0].toUpperCase()}</Avatar>
+                                            </ListItemAvatar>
+                                            <ListItemText 
+                                                primary={attendee.username}
+                                                secondary={attendee._id === eventDetails.currentUser?._id ? '(You)' : ''}
+                                            />
+                                        </ListItem>
+                                        {index < attendees.length - 1 && <Divider />}
+                                    </React.Fragment>
+                                ))}
+                            </List>
+                        ) : (
+                            <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                                No attendees yet. Be the first to join!
+                            </Typography>
+                        )}
+                    </Paper>
+                </Box>
             </Paper>
+
+            <Snackbar
+                open={showSnackbar}
+                autoHideDuration={3000}
+                onClose={() => setShowSnackbar(false)}
+            >
+                <Alert 
+                    onClose={() => setShowSnackbar(false)} 
+                    severity={error ? "error" : "success"}
+                >
+                    {error || snackbarMessage}
+                </Alert>
+            </Snackbar>
         </Container>
     );
 };

@@ -18,7 +18,8 @@ const createEvent = async (req, res) => {
         const event = new Event({
             ...req.body,
             community: req.params.communityId,
-            createdBy: req.user._id
+            createdBy: req.user._id,
+            going: [] // Initialize empty going array
         });
         await event.save();
         res.status(201).json(event);
@@ -51,9 +52,19 @@ const getCommunityEvents = async (req, res) => {
         const events = await Event.find({ community: req.params.communityId })
             .populate('community', 'name')
             .populate('createdBy', 'username')
+            .populate('going', 'username')
             .sort({ startTime: 1 }); // Sort events by start time
 
-        res.json(events);
+        // Add current user info to each event
+        const eventsWithUser = events.map(event => ({
+            ...event.toObject(),
+            currentUser: {
+                _id: req.user._id,
+                username: req.user.username
+            }
+        }));
+
+        res.json(eventsWithUser);
     } catch (error) {
         console.error('Error fetching community events:', error);
         res.status(500).json({ error: 'Error fetching community events' });
@@ -65,7 +76,8 @@ const getEventDetails = async (req, res) => {
     try {
         const event = await Event.findById(req.params.eventId)
             .populate('community', 'name')
-            .populate('createdBy', 'username');
+            .populate('createdBy', 'username')
+            .populate('going', 'username');
         
         if (!event) {
             return res.status(404).json({ error: 'Event not found' });
@@ -86,7 +98,16 @@ const getEventDetails = async (req, res) => {
             return res.status(403).json({ error: 'Access denied: Not a member of the community' });
         }
 
-        res.json(event);
+        // Add current user info to response
+        const eventWithUser = {
+            ...event.toObject(),
+            currentUser: {
+                _id: req.user._id,
+                username: req.user.username
+            }
+        };
+
+        res.json(eventWithUser);
     } catch (error) {
         console.error('Error fetching event details:', error);
         res.status(500).json({ error: 'Error fetching event details' });
@@ -96,28 +117,53 @@ const getEventDetails = async (req, res) => {
 // Toggle going status for an event
 const toggleGoing = async (req, res) => {
     try {
-        const event = await Event.findById(req.params.eventId);
+        const event = await Event.findById(req.params.eventId)
+            .populate('community');
 
         if (!event) {
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        // Check if user is already marked as going
-        const isGoing = event.going.includes(req.user.id);
+        const community = await Community.findById(event.community._id);
+        if (!community) {
+            return res.status(404).json({ error: 'Community not found' });
+        }
+
+        // Check if user is a member
+        const isMember = community.members.includes(req.user.id);
+        const isAdmin = community.admins.includes(req.user.id);
+        const isOwner = community.owner.toString() === req.user.id;
+
+        if (!isMember && !isAdmin && !isOwner) {
+            return res.status(403).json({ error: 'You must be a member of the community to attend events' });
+        }
+
+        // Check if user is already going
+        const isGoing = event.going.includes(req.user._id);
 
         if (isGoing) {
-            // User is marked as going, so remove them
-            event.going = event.going.filter(userId => userId.toString() !== req.user.id);
+            // Remove user from going list
+            event.going = event.going.filter(userId => userId.toString() !== req.user._id.toString());
         } else {
-            // User is not marked as going, so add them
-            event.going.push(req.user.id);
+            // Add user to going list
+            event.going.push(req.user._id);
         }
 
         await event.save();
-        res.json({ going: event.going });
+
+        // Populate going list before sending response
+        await event.populate('going', 'username');
+
+        res.json({
+            going: event.going,
+            currentUser: {
+                _id: req.user._id,
+                username: req.user.username
+            }
+        });
     } catch (error) {
         console.error('Error toggling going status:', error);
-        res.status(500).json({ error: 'Error toggling going status' });
+        res.status(500).json({ error: 'Error updating attendance status' });
     }
 };
 

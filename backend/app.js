@@ -6,6 +6,7 @@ const authRoutes = require('./routes/auth');
 const communityRoutes = require('./routes/community');
 const postRoutes = require('./routes/posts');
 const searchRoutes = require('./routes/search');
+const eventRoutes = require('./routes/event');
 const fs = require('fs');
 const path = require('path');
 
@@ -29,6 +30,7 @@ if (!fs.existsSync('uploads')) {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/b', communityRoutes);
+app.use('/api/b', eventRoutes); // Mount event routes under /api/b
 app.use('/api/posts', postRoutes);
 app.use('/api/search', searchRoutes);
 
