@@ -13,7 +13,6 @@ import PostDetail from './components/Post/PostDetail';
 import SearchResults from './pages/SearchResults';
 import NotFound from './components/NotFound';
 import Home from './pages/Home';
-import EventDetail from './components/Event/EventDetail';
 import CountdownTimer from './components/Event/CountdownTimer'; 
 import { AuthProvider } from './contexts/AuthContext';
 
