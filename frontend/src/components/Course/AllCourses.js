@@ -21,7 +21,8 @@ import {
     Paper,
     Divider,
     IconButton,
-    Tooltip
+    Tooltip,
+    Pagination
 } from '@mui/material';
 import {
     Search as SearchIcon,
@@ -43,6 +44,10 @@ const AllCourses = () => {
     const [activeTab, setActiveTab] = useState(0);
     const [filteredCourses, setFilteredCourses] = useState([]);
     const [departments] = useState(['CSE', 'MAT', 'PHY', 'ENG']);
+
+    // Pagination state
+    const [page, setPage] = useState(1);
+    const itemsPerPage = 24;
 
     useEffect(() => {
         fetchCourses();
@@ -93,9 +98,9 @@ const AllCourses = () => {
                 const faculty = (course.faculty || '').toLowerCase();
 
                 return courseCode.includes(term) ||
-                       courseName.includes(term) ||
-                       courseDetails.includes(term) ||
-                       faculty.includes(term);
+                    courseName.includes(term) ||
+                    courseDetails.includes(term) ||
+                    faculty.includes(term);
             });
         }
 
@@ -114,6 +119,18 @@ const AllCourses = () => {
         }
 
         setFilteredCourses(filtered);
+        setPage(1); // Reset to first page when filters change
+    };
+
+    // Calculate pagination slices
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedCourses = filteredCourses.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(filteredCourses.length / itemsPerPage);
+
+    const handlePageChange = (event, value) => {
+        setPage(value);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     if (loading) {
@@ -164,8 +181,8 @@ const AllCourses = () => {
                                     <Typography variant="subtitle1" color={
                                         suggestions.currentStatus.canTakeMore ? "success.main" : "error.main"
                                     }>
-                                        {suggestions.currentStatus.canTakeMore 
-                                            ? "Can take more courses" 
+                                        {suggestions.currentStatus.canTakeMore
+                                            ? "Can take more courses"
                                             : "Maximum courses reached"}
                                     </Typography>
                                 </Grid>
@@ -213,12 +230,27 @@ const AllCourses = () => {
                     </Stack>
                 </Paper>
 
+                {/* Top Pagination Control */}
+                {totalPages > 1 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+                        <Pagination
+                            count={totalPages}
+                            page={page}
+                            onChange={handlePageChange}
+                            color="primary"
+                            size="large"
+                            showFirstButton
+                            showLastButton
+                        />
+                    </Box>
+                )}
+
                 {/* Course List */}
                 <Grid container spacing={2}>
-                    {filteredCourses.map((course, index) => {
+                    {paginatedCourses.map((course, index) => {
                         // Create a unique key using course code, section, and faculty
-                        const uniqueKey = `${course.courseCode || course.code}_${course.section || ''}_${course.faculty || ''}_${index}`;
-                        
+                        const uniqueKey = `${course.courseCode || course.code}_${course.section || ''}_${course.faculty || ''}_${startIndex + index}`;
+
                         return (
                             <Grid item xs={12} md={6} lg={4} key={uniqueKey}>
                                 <Card>
@@ -226,19 +258,19 @@ const AllCourses = () => {
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                                             <Typography variant="h6" component="div">
                                                 {course.courseCode || course.code}: {course.courseTitle || course.name}
-                                                {course.section && 
+                                                {course.section &&
                                                     <Typography component="span" color="text.secondary" sx={{ ml: 1 }}>
                                                         (Section {course.section})
                                                     </Typography>
                                                 }
                                             </Typography>
-                                            <Chip 
+                                            <Chip
                                                 label={`${course.courseCredit || course.credits} Credits`}
                                                 color="primary"
                                                 size="small"
                                             />
                                         </Box>
-                                        
+
                                         {(course.courseDetails || course.description) && (
                                             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                                                 {course.courseDetails || course.description}
@@ -268,7 +300,7 @@ const AllCourses = () => {
                                             {course.schedules && course.schedules.length > 0 && (
                                                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                                                     <EventIcon fontSize="small" color="action" sx={{ mt: 0.5 }} />
-                                                    <Typography variant="body2" component="div" sx={{ 
+                                                    <Typography variant="body2" component="div" sx={{
                                                         fontFamily: 'inherit',
                                                         whiteSpace: 'pre-wrap',
                                                         wordBreak: 'break-word'
@@ -282,25 +314,24 @@ const AllCourses = () => {
                                         </Stack>
 
                                         <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                            <Chip 
+                                            <Chip
                                                 label={`${course.availableSeat || course.availableSeats || 0} seats available`}
                                                 color={(course.availableSeat || course.availableSeats) > 0 ? "success" : "error"}
                                                 size="small"
                                             />
-                                            {(course.preRequisiteCourses || course.prerequisites) && 
-                                             (course.preRequisiteCourses?.trim() || course.prerequisites?.length > 0) && (
-                                                <Tooltip title={`Prerequisites: ${
-                                                    Array.isArray(course.prerequisites) 
-                                                        ? course.prerequisites.join(', ')
-                                                        : course.preRequisiteCourses || 'None'
-                                                }`}>
-                                                    <Chip 
-                                                        label="Has Prerequisites"
-                                                        color="warning"
-                                                        size="small"
-                                                    />
-                                                </Tooltip>
-                                            )}
+                                            {(course.preRequisiteCourses || course.prerequisites) &&
+                                                (course.preRequisiteCourses?.trim() || course.prerequisites?.length > 0) && (
+                                                    <Tooltip title={`Prerequisites: ${Array.isArray(course.prerequisites)
+                                                            ? course.prerequisites.join(', ')
+                                                            : course.preRequisiteCourses || 'None'
+                                                        }`}>
+                                                        <Chip
+                                                            label="Has Prerequisites"
+                                                            color="warning"
+                                                            size="small"
+                                                        />
+                                                    </Tooltip>
+                                                )}
                                         </Box>
                                     </CardContent>
                                 </Card>
@@ -313,6 +344,21 @@ const AllCourses = () => {
                     <Alert severity="info" sx={{ mt: 2 }}>
                         No courses found matching your criteria.
                     </Alert>
+                )}
+
+                {/* Bottom Pagination Control */}
+                {totalPages > 1 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 2 }}>
+                        <Pagination
+                            count={totalPages}
+                            page={page}
+                            onChange={handlePageChange}
+                            color="primary"
+                            size="large"
+                            showFirstButton
+                            showLastButton
+                        />
+                    </Box>
                 )}
             </Box>
 

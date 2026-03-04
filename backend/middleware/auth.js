@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-const JWT_SECRET = 'your-jwt-secret'; // In production, use environment variable
+const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret';
 
 exports.protect = async (req, res, next) => {
     console.log('Auth middleware - checking token');
@@ -36,9 +36,9 @@ exports.protect = async (req, res, next) => {
         next();
     } catch (err) {
         console.error('Auth middleware error:', err);
-        return res.status(401).json({ 
+        return res.status(401).json({
             error: 'Not authorized - token failed',
-            details: err.message 
+            details: err.message
         });
     }
 };
