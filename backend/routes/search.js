@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { searchCommunities } = require('../controllers/communityController');
-const { searchPosts } = require('../controllers/postController');
+const { searchCommunities, searchPosts } = require('../controllers/searchController');
 
 // Search routes
 router.get('/communities', searchCommunities);

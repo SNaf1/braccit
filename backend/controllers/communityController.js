@@ -20,8 +20,10 @@ const createCommunity = async (req, res) => {
             console.log('Banner image saved:', bannerImage);
         }
 
+        const communityName = name.toLowerCase().replace(/\s+/g, ''); // Remove spaces
+
         const community = new Community({
-            name: name.toLowerCase(),
+            name: communityName,
             description,
             isPrivate: isPrivate === 'true',
             bannerImage,
@@ -190,6 +192,37 @@ const addAdmin = async (req, res) => {
         res.json({ message: 'Admin added successfully' });
     } catch (error) {
         res.status(500).json({ error: 'Error adding admin' });
+    }
+};
+
+// Remove admin (owner only)
+const removeAdmin = async (req, res) => {
+    try {
+        const community = await Community.findOne({ name: req.params.name.toLowerCase() });
+        if (!community) {
+            return res.status(404).json({ error: 'Community not found' });
+        }
+
+        // Check if user is owner
+        if (!community.owner.equals(req.user._id)) {
+            return res.status(403).json({ error: 'Only owner can remove admins' });
+        }
+
+        const { userId } = req.body;
+
+        // Check if user is an admin
+        if (!community.admins.includes(userId)) {
+            return res.status(400).json({ error: 'User is not an admin' });
+        }
+
+        // Remove user from admins
+        community.admins = community.admins.filter(adminId => !adminId.equals(userId));
+        await community.save();
+
+        res.json({ message: 'Admin removed successfully' });
+    } catch (error) {
+        console.error('Error removing admin:', error);
+        res.status(500).json({ error: 'Error removing admin' });
     }
 };
 
@@ -370,6 +403,29 @@ const getUserCommunities = async (req, res) => {
     }
 };
 
+const deleteCommunity = async (req, res) => {
+    try {
+        const community = await Community.findOne({ name: req.params.name.toLowerCase() });
+        if (!community) {
+            return res.status(404).json({ error: 'Community not found' });
+        }
+
+        // Check if user is the owner
+        if (!community.owner.equals(req.user._id)) {
+            return res.status(403).json({ error: 'Only the owner can delete the community' });
+        }
+
+        await Community.deleteOne({ _id: community._id });
+
+        res.json({ message: 'Community deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting community:', error);
+        res.status(500).json({ error: 'Error deleting community' });
+    }
+};
+
+
+
 module.exports = {
     createCommunity,
     getCommunity,
@@ -377,11 +433,13 @@ module.exports = {
     approveJoinRequest,
     getAllCommunities,
     addAdmin,
+    removeAdmin,
     updateCommunity,
     searchCommunities,
     cancelJoinRequest,
     rejectJoinRequest,
     leaveCommunity,
     removeMember,
-    getUserCommunities
+    getUserCommunities,
+    deleteCommunity
 };

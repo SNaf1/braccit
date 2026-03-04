@@ -21,6 +21,7 @@ import {
   Tabs,
   TextField,
   Snackbar,
+  Tooltip,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -29,6 +30,7 @@ import {
   Edit as EditIcon,
   PersonAdd as PersonAddIcon,
   PersonRemove as PersonRemoveIcon,
+  RemoveCircle as RemoveCircleIcon,
 } from '@mui/icons-material';
 import axios from '../../utils/axios';
 
@@ -121,6 +123,42 @@ const CommunitySettings = ({ community, onUpdate, onClose }) => {
     }
   };
 
+  const handleAddAdmin = async (userId) => {
+    try {
+      await axios.post(`/api/b/${community.name}/admin`, { userId });
+      onUpdate();
+      setSnackbar({
+        open: true,
+        message: 'Admin added successfully',
+        severity: 'success'
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.error || 'Failed to add admin',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleRemoveAdmin = async (userId) => {
+    try {
+      await axios.post(`/api/b/${community.name}/remove-admin`, { userId });
+      onUpdate();
+      setSnackbar({
+        open: true,
+        message: 'Admin removed successfully',
+        severity: 'success'
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.error || 'Failed to remove admin',
+        severity: 'error'
+      });
+    }
+  };
+
   return (
     <Paper sx={{ p: 3, maxWidth: 800, mx: 'auto', mt: 3 }}>
       <Typography variant="h5" gutterBottom>
@@ -190,19 +228,52 @@ const CommunitySettings = ({ community, onUpdate, onClose }) => {
             <ListItem key={member._id}>
               <ListItemText
                 primary={member.username}
-                secondary={community.admins.some(admin => admin._id === member._id) ? 'Admin' : 'Member'}
+                secondary={
+                  community.owner._id === member._id
+                    ? 'Owner'
+                    : community.admins.some(admin => admin._id === member._id)
+                    ? 'Admin'
+                    : 'Member'
+                }
               />
-              {!community.admins.some(admin => admin._id === member._id) && (
-                <ListItemSecondaryAction>
-                  <IconButton
-                    edge="end"
-                    onClick={() => handleRemoveMember(member._id)}
-                    color="error"
-                  >
-                    <PersonRemoveIcon />
-                  </IconButton>
-                </ListItemSecondaryAction>
-              )}
+              <ListItemSecondaryAction>
+                {community.owner._id !== member._id && (
+                  <>
+                    {community.admins.some(admin => admin._id === member._id) ? (
+                      <Tooltip title="Remove Admin">
+                        <IconButton
+                          edge="end"
+                          onClick={() => handleRemoveAdmin(member._id)}
+                          color="warning"
+                          sx={{ mr: 1 }}
+                        >
+                          <RemoveCircleIcon />
+                        </IconButton>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip title="Add Admin">
+                        <IconButton
+                          edge="end"
+                          onClick={() => handleAddAdmin(member._id)}
+                          color="primary"
+                          sx={{ mr: 1 }}
+                        >
+                          <PersonAddIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    <Tooltip title="Remove Member">
+                      <IconButton
+                        edge="end"
+                        onClick={() => handleRemoveMember(member._id)}
+                        color="error"
+                      >
+                        <PersonRemoveIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </>
+                )}
+              </ListItemSecondaryAction>
             </ListItem>
           ))}
         </List>
@@ -214,40 +285,37 @@ const CommunitySettings = ({ community, onUpdate, onClose }) => {
             <ListItem key={member._id}>
               <ListItemText primary={member.username} />
               <ListItemSecondaryAction>
-                <IconButton
-                  edge="end"
-                  onClick={() => handleApproveJoinRequest(member._id)}
-                  color="success"
-                  sx={{ mr: 1 }}
-                >
-                  <CheckIcon />
-                </IconButton>
-                <IconButton
-                  edge="end"
-                  onClick={() => handleRejectJoinRequest(member._id)}
-                  color="error"
-                >
-                  <CloseIcon />
-                </IconButton>
+                <Tooltip title="Approve Join Request">
+                  <IconButton
+                    edge="end"
+                    onClick={() => handleApproveJoinRequest(member._id)}
+                    color="success"
+                    sx={{ mr: 1 }}
+                  >
+                    <CheckIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Reject Join Request">
+                  <IconButton
+                    edge="end"
+                    onClick={() => handleRejectJoinRequest(member._id)}
+                    color="error"
+                  >
+                    <CloseIcon />
+                  </IconButton>
+                </Tooltip>
               </ListItemSecondaryAction>
             </ListItem>
           ))}
-          {(!community.pendingMembers || community.pendingMembers.length === 0) && (
-            <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-              No pending join requests
-            </Typography>
-          )}
         </List>
       )}
 
       {activeTab === 3 && (
-        <Box sx={{ mt: 2 }}>
+        <Box>
           <Typography variant="h6" color="error" gutterBottom>
-            Delete Community
+            Danger Zone
           </Typography>
-          <Typography variant="body2" color="text.secondary" paragraph>
-            Once you delete a community, there is no going back. Please be certain.
-          </Typography>
+          <Divider sx={{ mb: 2 }} />
           <Button
             variant="contained"
             color="error"
@@ -256,31 +324,45 @@ const CommunitySettings = ({ community, onUpdate, onClose }) => {
           >
             Delete Community
           </Button>
+          <Dialog
+            open={deleteDialogOpen}
+            onClose={() => setDeleteDialogOpen(false)}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{
+              sx: {
+                backgroundColor: '#1a1a1b',
+                color: 'white'
+              }
+            }}
+          >
+            <DialogTitle>Delete Community</DialogTitle>
+            <DialogContent>
+              <Typography>
+                Are you sure you want to delete this community? This action cannot be undone.
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDeleteDialogOpen(false)} color="primary">
+                Cancel
+              </Button>
+              <Button onClick={handleDeleteCommunity} color="error">
+                Delete
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Box>
       )}
-
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Delete Community?</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete this community? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleDeleteCommunity} color="error">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        message={snackbar.message}
-        severity={snackbar.severity}
-      />
+      >
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Paper>
   );
 };
