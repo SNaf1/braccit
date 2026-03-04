@@ -58,18 +58,9 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 }));
 
 const Navbar = () => {
-  const { user, loading } = useAuth();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { user, loading, isLoginModalOpen, openLoginModal, closeLoginModal } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
-
-  const handleAuthModalOpen = () => {
-    setIsAuthModalOpen(true);
-  };
-
-  const handleAuthModalClose = () => {
-    setIsAuthModalOpen(false);
-  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -86,67 +77,87 @@ const Navbar = () => {
           to="/"
           edge="start"
           color="inherit"
-          aria-label="home"
           sx={{ mr: 2 }}
         >
           <SchoolIcon />
         </IconButton>
-
         <Typography
           variant="h6"
+          noWrap
           component={Link}
           to="/"
           sx={{
-            textDecoration: 'none',
+            mr: 2,
+            display: { xs: 'none', md: 'flex' },
+            fontWeight: 700,
             color: 'inherit',
-            display: { xs: 'none', sm: 'block' }
+            textDecoration: 'none',
           }}
         >
           Braccit
         </Typography>
 
-        <Box component="form" onSubmit={handleSearch} sx={{ flexGrow: 1, ml: 2, maxWidth: '400px' }}>
-          <Search>
-            <SearchIconWrapper>
-              <SearchIcon />
-            </SearchIconWrapper>
-            <StyledInputBase
-              placeholder="Search communities and posts..."
-              inputProps={{ 'aria-label': 'search' }}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </Search>
-        </Box>
+        <Search component="form" onSubmit={handleSearch}>
+          <SearchIconWrapper>
+            <SearchIcon />
+          </SearchIconWrapper>
+          <StyledInputBase
+            placeholder="Search…"
+            inputProps={{ 'aria-label': 'search' }}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleSearch(e);
+              }
+            }}
+          />
+        </Search>
 
         <Box sx={{ flexGrow: 1 }} />
 
-        {loading ? (
-          <CircularProgress size={24} color="inherit" />
-        ) : user ? (
-          <>
-            <Button
-              component={Link}
-              to="/create-community"
-              color="inherit"
-              startIcon={<AddIcon />}
-              sx={{ mr: 2 }}
-            >
-              Create Community
-            </Button>
-            <UserDropdown />
-          </>
-        ) : (
-          <Button color="inherit" onClick={handleAuthModalOpen}>
-            Login / Register
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Button
+            component={Link}
+            to="/routine"
+            color="inherit"
+            sx={{
+              display: { xs: 'none', md: 'flex' },
+              alignItems: 'center',
+              gap: 1
+            }}
+          >
+            Routine
           </Button>
-        )}
-      </Toolbar>
 
-      <AuthModal
-        open={isAuthModalOpen}
-        onClose={handleAuthModalClose}
-      />
+          {user ? (
+            <>
+              <Button
+                component={Link}
+                to="/create-post"
+                variant="contained"
+                startIcon={<AddIcon />}
+                sx={{
+                  display: { xs: 'none', md: 'flex' }
+                }}
+              >
+                Create Post
+              </Button>
+              <UserDropdown />
+            </>
+          ) : loading ? (
+            <CircularProgress size={24} color="inherit" />
+          ) : (
+            <Button
+              color="inherit"
+              onClick={openLoginModal}
+            >
+              Login / Register
+            </Button>
+          )}
+        </Box>
+      </Toolbar>
+      <AuthModal open={isLoginModalOpen} onClose={closeLoginModal} />
     </AppBar>
   );
 };

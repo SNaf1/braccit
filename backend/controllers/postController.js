@@ -94,7 +94,7 @@ const getPost = async (req, res) => {
             return res.status(404).json({ error: 'Post not found' });
         }
 
-        // Check if community is private and user has access
+        
         if (post.community.isPrivate) {
             // For private communities, check if user is authenticated and is a member
             if (!req.user) {

@@ -31,13 +31,24 @@ instance.interceptors.response.use(
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
 
-            // Clear invalid token and user data
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
+            try {
+                // Try to refresh the token
+                const response = await instance.post('/api/auth/refresh-token');
+                const { token } = response.data;
 
-            // Redirect to login if needed
-            if (window.location.pathname !== '/login') {
-                window.location.href = '/';
+                if (token) {
+                    // Update token in localStorage and axios headers
+                    localStorage.setItem('token', token);
+                    instance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+                    // Retry the original request
+                    return instance(originalRequest);
+                }
+            } catch (refreshError) {
+                // If refresh fails, clear auth data
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                // Don't redirect, let the component handle the error
             }
         }
 

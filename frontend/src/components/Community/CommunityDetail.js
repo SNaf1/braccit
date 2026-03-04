@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Event from '../Event/Event';
 import { useParams } from 'react-router-dom';
 import {
   Box,
@@ -223,7 +224,7 @@ const CommunityDetail = () => {
             />
             <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <GroupIcon fontSize="small" />
-              {community.memberCount} member{community.memberCount !== 1 ? 's' : ''}
+              {community.memberCount || 0} member{(community.memberCount || 0) !== 1 ? 's' : ''}
             </Typography>
           </div>
         </BannerTitle>
@@ -271,14 +272,14 @@ const CommunityDetail = () => {
             <Typography variant="h6" gutterBottom>
               About b/{community.name}
             </Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
+            <Typography variant="body2" color="textSecondary" paragraph>
               {community.description}
             </Typography>
 
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <GroupIcon sx={{ mr: 1 }} />
-              <Typography variant="body2">
-                {community.memberCount} member{community.memberCount !== 1 ? 's' : ''}
+              <Typography variant="body2" color="textSecondary" sx={{ color: '#818384' }}>
+                {community.memberCount || 0} member{(community.memberCount || 0) !== 1 ? 's' : ''}
               </Typography>
             </Box>
 
@@ -308,16 +309,23 @@ const CommunityDetail = () => {
                 ) : (
                   <Button
                     variant="contained"
-                    color="primary"
                     onClick={handleJoinRequest}
                     startIcon={<PersonAddIcon />}
                     fullWidth
                   >
-                    {community.isPrivate ? 'Request to Join' : 'Join Community'}
+                    {community.isPrivate ? 'Request to Join' : 'Join'}
                   </Button>
                 )}
               </Box>
             )}
+
+            {/* Community Events Section */}
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="h6" gutterBottom>
+                Community Events
+              </Typography>
+              <Event communityId={community._id} communityName={community.name} />
+            </Box>
 
             {community.isAdmin && (
               <Button

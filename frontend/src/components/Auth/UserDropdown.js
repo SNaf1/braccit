@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Box,
     Avatar,
@@ -32,8 +32,10 @@ const UserDropdown = () => {
     };
 
     const handleProfile = () => {
-        navigate(`/user/${user.username}`);
-        handleClose();
+        if (user?.username) {
+            navigate(`/user/${user.username}`);
+            handleClose();
+        }
     };
 
     const handleSettings = () => {
@@ -41,11 +43,14 @@ const UserDropdown = () => {
         handleClose();
     };
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await logout();
         handleClose();
         navigate('/');
     };
+
+    // Only render if we have a user
+    if (!user) return null;
 
     return (
         <>
@@ -53,21 +58,16 @@ const UserDropdown = () => {
                 <IconButton
                     onClick={handleClick}
                     size="small"
-                    sx={{ ml: 2 }}
                     aria-controls={open ? 'account-menu' : undefined}
                     aria-haspopup="true"
                     aria-expanded={open ? 'true' : undefined}
                 >
-                    <Avatar
-                        sx={{
-                            width: 32,
-                            height: 32,
-                            backgroundColor: '#2196f3',
-                            '&:hover': { opacity: 0.8 }
-                        }}
-                        src={user?.profilePicture}
+                    <Avatar 
+                        sx={{ width: 32, height: 32 }}
+                        src={user.profilePicture}
+                        alt={user.username}
                     >
-                        {user?.username?.[0]?.toUpperCase()}
+                        {user.username?.[0]?.toUpperCase()}
                     </Avatar>
                 </IconButton>
             </Box>
@@ -76,14 +76,20 @@ const UserDropdown = () => {
                 id="account-menu"
                 open={open}
                 onClose={handleClose}
+                onClick={handleClose}
                 PaperProps={{
+                    elevation: 0,
                     sx: {
-                        backgroundColor: '#1a1a1b',
-                        color: 'white',
+                        overflow: 'visible',
+                        filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
                         mt: 1.5,
+                        bgcolor: '#1a1a1b',
+                        border: '1px solid #343536',
+                        color: '#d7dadc',
                         '& .MuiMenuItem-root': {
+                            color: '#d7dadc',
                             '&:hover': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                                bgcolor: 'rgba(255, 255, 255, 0.1)'
                             }
                         }
                     }
@@ -91,28 +97,22 @@ const UserDropdown = () => {
                 transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                 anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
             >
-                <Box sx={{ px: 2, py: 1 }}>
-                    <Typography variant="subtitle1" color="#2196f3">
-                        {user?.username}
-                    </Typography>
-                </Box>
-                <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.12)' }} />
                 <MenuItem onClick={handleProfile}>
                     <ListItemIcon>
-                        <PersonIcon sx={{ color: 'white' }} />
+                        <PersonIcon sx={{ color: '#d7dadc' }} />
                     </ListItemIcon>
                     Profile
                 </MenuItem>
                 <MenuItem onClick={handleSettings}>
                     <ListItemIcon>
-                        <SettingsIcon sx={{ color: 'white' }} />
+                        <SettingsIcon sx={{ color: '#d7dadc' }} />
                     </ListItemIcon>
                     Settings
                 </MenuItem>
-                <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.12)' }} />
+                <Divider sx={{ borderColor: '#343536' }} />
                 <MenuItem onClick={handleLogout}>
                     <ListItemIcon>
-                        <LogoutIcon sx={{ color: 'white' }} />
+                        <LogoutIcon sx={{ color: '#d7dadc' }} />
                     </ListItemIcon>
                     Logout
                 </MenuItem>

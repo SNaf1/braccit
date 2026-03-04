@@ -333,6 +333,42 @@ const rejectJoinRequest = async (req, res) => {
     }
 };
 
+// Join community (for public communities)
+const joinCommunity = async (req, res) => {
+    try {
+        const community = await Community.findOne({ name: req.params.name.toLowerCase() });
+        if (!community) {
+            return res.status(404).json({ error: 'Community not found' });
+        }
+
+        // Check if user is already a member
+        if (community.members.includes(req.user._id)) {
+            return res.status(400).json({ error: 'Already a member' });
+        }
+
+        // Add user to members
+        community.members.push(req.user._id);
+        await community.save();
+
+        // Update user's joinedCommunities
+        await User.findByIdAndUpdate(req.user._id, {
+            $addToSet: { joinedCommunities: community._id }
+        });
+
+        // Return updated community with populated fields
+        const updatedCommunity = await Community.findById(community._id)
+            .populate('owner', 'username')
+            .populate('members', 'username')
+            .populate('admins', 'username')
+            .populate('pendingMembers', 'username');
+
+        res.json(updatedCommunity);
+    } catch (error) {
+        console.error('Error joining community:', error);
+        res.status(500).json({ error: 'Error joining community' });
+    }
+};
+
 // Leave community
 const leaveCommunity = async (req, res) => {
     try {
@@ -351,8 +387,21 @@ const leaveCommunity = async (req, res) => {
         community.admins = community.admins.filter(id => !id.equals(req.user._id));
         await community.save();
 
-        res.json({ message: 'Successfully left community' });
+        // Remove community from user's joinedCommunities
+        await User.findByIdAndUpdate(req.user._id, {
+            $pull: { joinedCommunities: community._id }
+        });
+
+        // Return updated community with populated fields
+        const updatedCommunity = await Community.findById(community._id)
+            .populate('owner', 'username')
+            .populate('members', 'username')
+            .populate('admins', 'username')
+            .populate('pendingMembers', 'username');
+
+        res.json(updatedCommunity);
     } catch (error) {
+        console.error('Error leaving community:', error);
         res.status(500).json({ error: 'Error leaving community' });
     }
 };
@@ -438,6 +487,7 @@ module.exports = {
     searchCommunities,
     cancelJoinRequest,
     rejectJoinRequest,
+    joinCommunity,
     leaveCommunity,
     removeMember,
     getUserCommunities,

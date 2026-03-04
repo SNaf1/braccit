@@ -7,6 +7,7 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
     useEffect(() => {
         // Check if user is logged in on page load
@@ -35,6 +36,14 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const openLoginModal = () => {
+        setIsLoginModalOpen(true);
+    };
+
+    const closeLoginModal = () => {
+        setIsLoginModalOpen(false);
+    };
+
     const login = async (email, password) => {
         try {
             const res = await axios.post('http://localhost:5000/api/auth/login', {
@@ -44,6 +53,7 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('token', res.data.token);
             setUser(res.data.user);
             setError(null);
+            closeLoginModal(); // Close modal on successful login
             return true;
         } catch (err) {
             setError(err.response?.data?.error || 'Login failed');
@@ -61,6 +71,7 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('token', res.data.token);
             setUser(res.data.user);
             setError(null);
+            closeLoginModal(); // Close modal on successful registration
             return true;
         } catch (err) {
             setError(err.response?.data?.error || 'Registration failed');
@@ -125,7 +136,10 @@ export const AuthProvider = ({ children }) => {
                 logout,
                 updateProfile,
                 forgotPassword,
-                resetPassword
+                resetPassword,
+                isLoginModalOpen,
+                openLoginModal,
+                closeLoginModal
             }}
         >
             {children}
